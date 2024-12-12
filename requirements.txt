@@ -1,0 +1,6 @@
+google-generativeai
+colorama
+SpeechRecognition pyaudiom
+gTTS
+pygame
+pydub
