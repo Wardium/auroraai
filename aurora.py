@@ -62,12 +62,38 @@ def playsound(sound_file):
     pygame.mixer.Sound(sound_file).play()
 
 def write_to_api(variable_name, variable_state):
-    """Writes a variable and its state to api.py."""
-    with open("api.py", "a") as file:
+    """Writes or updates a variable and its state in api.py."""
+    api_file = "api.py"
+    updated = False
+    lines = []
+
+    # Read existing lines from the file if it exists
+    try:
+        with open(api_file, "r") as file:
+            lines = file.readlines()
+    except FileNotFoundError:
+        pass
+
+    # Update the variable if it exists
+    for i, line in enumerate(lines):
+        if line.startswith(f"{variable_name} ="):
+            if isinstance(variable_state, str):
+                lines[i] = f"{variable_name} = \"{variable_state}\"\n"
+            else:
+                lines[i] = f"{variable_name} = {variable_state}\n"
+            updated = True
+            break
+
+    # Add the variable if it wasn't updated
+    if not updated:
         if isinstance(variable_state, str):
-            file.write(f"{variable_name} = \"{variable_state}\"\n")
+            lines.append(f"{variable_name} = \"{variable_state}\"\n")
         else:
-            file.write(f"{variable_name} = {variable_state}\n")
+            lines.append(f"{variable_name} = {variable_state}\n")
+
+    # Write back the updated lines
+    with open(api_file, "w") as file:
+        file.writelines(lines)
 
 def choose_input_mode():
     """
