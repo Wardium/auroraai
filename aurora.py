@@ -35,6 +35,8 @@ output = ""
 send = False
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
+        "The Users name is: " + settings.name + " "
+        "If Prompted with the text '@RANDOM', please respond with a coversation starter, please do not reuse the same ones, be broad, this is not a date."
         "Use the last emotion in hostory to set your current emotion, this may not be the same as your set presonality"
         "never immediatly end a coversation"
         "you will be given your entire history, please do not bring it up in conversation unless prompted or required to for accuracy"
@@ -59,6 +61,14 @@ def playsound(sound_file):
     pygame.mixer.init()
     pygame.mixer.Sound(sound_file).play()
 
+def write_to_api(variable_name, variable_state):
+    """Writes a variable and its state to api.py."""
+    with open("api.py", "a") as file:
+        if isinstance(variable_state, str):
+            file.write(f"{variable_name} = \"{variable_state}\"\n")
+        else:
+            file.write(f"{variable_name} = {variable_state}\n")
+
 def choose_input_mode():
     """
     Automatically selects input mode based on settings.voice.
@@ -74,10 +84,13 @@ def choose_input_mode():
 # Gemini AI Interaction
 def get_response(history, model):
     """Sends the conversation history to Gemini AI and returns the response."""
+    write_to_api("waiting_for_response", "yes")
     try:
         response = model.generate_content(history)
+        write_to_api("waiting_for_response", "no")
         return response.text.strip()  # Ensure clean response
     except Exception as e:
+        write_to_api("waiting_for_response", "no")
         return f"An error occurred: {e}"
 
 def check_end_of_conversation(user_input, end_detection_model):
@@ -197,13 +210,11 @@ def conversation_loop():
     """Main loop to handle the conversation."""
     if interaction_mode == '2':
         print(Fore.YELLOW + "Listening for the wake word 'aurora'..." + Style.RESET_ALL)
-
-    print(Fore.GREEN + "Wake word detected. Starting conversation..." + Style.RESET_ALL)
     
 
     lasttime = "never"
     conversation_history = get_all_words_from_files_in_folder("logs") + "\n" + personality + "\n" + "\n"
-
+    write_to_api("waiting_for_input", "yes")
     while True:
         if interaction_mode == '1':
             output = "none"
@@ -218,22 +229,28 @@ def conversation_loop():
 
         if not user_input:
             continue
-
+        write_to_api("waiting_for_input", "no")
         conversation_history = add_message_to_history(conversation_history, "User", user_input)
         output = get_response(conversation_history, model)
         output = re.sub(r"AI:\s*", "", output)
         if "@e_sad" in output.lower():
             emotion = "sad"
+            write_to_api("emotion", emotion)
         elif "@e_happy" in output.lower():
             emotion = "happy"
+            write_to_api("emotion", emotion)
         elif "@e_mad" in output.lower():
             emotion = "mad"
+            write_to_api("emotion", emotion)
         elif "@e_nervous" in output.lower():
             emotion = "nervous"
+            write_to_api("emotion", emotion)
         elif "@e_neutral" in output.lower():
             emotion = "neutral"
+            write_to_api("emotion", emotion)
         elif "@e_scared" in output.lower():
             emotion = "scared"
+            write_to_api("emotion", emotion)
         conversation_history = add_message_to_history(conversation_history, "AI", output)
 
         if "@END" in output:
@@ -249,6 +266,7 @@ def conversation_loop():
             #Print AI's response because it needds to be printed!
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
+            write_to_api("output", output)
             send_output(output)
             make_voice(voice_text=output, rate=1.3)
             save_conversation_to_file(conversation_history)
