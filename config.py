@@ -14,9 +14,12 @@ def submit():
     data = {}
     data["set"] = True
     data["api"] = entry_fields[0].get()
+    data["name"] = entry_fields[1].get()
     data["speak"] = checkbox_vars[0].get()
     data["voice"] = checkbox_vars[1].get()
-    data["custom_personailty"] = checkbox_vars[2].get()
+    data["custom_personality"] = checkbox_vars[2].get()
+    data["check_in"] = checkbox_vars[3].get()
+    
     if checkbox_vars[2].get():
         data["personality_text"] = custom_personality_entry.get()
     else:
@@ -52,7 +55,7 @@ def toggle_custom_personality():
 # Initialize main window
 root = tk.Tk()
 root.title("AI Setup")
-root.geometry("330x230")
+root.geometry("330x300")
 root.resizable(False, False)  # Lock width and height
 
 # Create a frame for the input fields
@@ -60,7 +63,7 @@ input_frame = tk.Frame(root)
 input_frame.pack(pady=10)
 
 # List of labels for input fields
-labels = ["Google API"]
+labels = ["Google API", "Your Name"]
 entry_fields = []
 
 # Create input fields
@@ -71,8 +74,8 @@ for i, label in enumerate(labels):
     entry_fields.append(entry)
 
 # Create checkboxes for custom options
-checkbox_vars = [tk.BooleanVar() for _ in range(3)]
-checkbox_labels = ["Speak Response", "Voice Mode", "Custom Personality"]
+checkbox_vars = [tk.BooleanVar() for _ in range(4)]
+checkbox_labels = ["Speak Response", "Voice Mode", "Custom Personality", "Check-In"]
 
 for i, label in enumerate(checkbox_labels):
     tk.Checkbutton(input_frame, text=label, variable=checkbox_vars[i], command=toggle_custom_personality if label == "Custom Personality" else None).grid(row=len(labels) + i, column=0, columnspan=2, padx=5, pady=5, sticky="w")
