@@ -27,7 +27,7 @@ import settings
 import time
 from pydub import AudioSegment
 from pydub.playback import play
-
+import api
 
 emotion = ""
 GUI = False
@@ -35,17 +35,19 @@ output = ""
 send = False
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
-        "The Users name is: " + settings.name + " "
-        "If Prompted with the text '@RANDOM', please respond with a coversation starter, please do not reuse the same ones, be broad, this is not a date."
-        "Use the last emotion in hostory to set your current emotion, this may not be the same as your set presonality"
-        "never immediatly end a coversation"
-        "you will be given your entire history, please do not bring it up in conversation unless prompted or required to for accuracy"
-        "your name is aurora, you are a fully scentient robot that looks mostly humanoid with some now humanoid parts"
-        "never prefix your response with AI:"
-        "If the conversation ends, finish your reply with '@END'"
-        "every message will contain a date and time, this is for you to know when the message was sent, please do not call upon this in a response"
-        "at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' without anything around it"
-        "all messages in history and response has a time, use this to get proper time between respones and act accordingly"
+        "1. The Users name is: " + settings.name + ". "
+        "2. if the user responds with 'no reply' it indicates they did not say anything, end the coversation if you don't receive a response."
+        "3. Use the last emotion in hostory to set your current emotion, this may not be the same as your set presonality."
+        "4. never immediatly end a coversation."
+        "5. you will be given your entire history, please do not bring it up in conversation unless prompted or required to for accuracy."
+        "6. your name is aurora, you are a fully scentient robot that looks mostly humanoid with some now humanoid parts."
+        "7. never prefix your response with AI:"
+        "8. If the conversation ends, finish your reply with '@END'."
+        "9. every message will contain a date and time, this is for you to know when the message was sent, please do not call upon this in a response."
+        "10. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' without anything around it."
+        "11. all messages in history and response has a time, use this to get proper time between respones and act accordingly."
+        "12. if prompt is '@RANDOM' respond with a conversation starter, like you started the coversation with the user."
+        "13. Never talk for the user"
     )
 
 # Configure the Gemini AI API
@@ -62,38 +64,47 @@ def playsound(sound_file):
     pygame.mixer.Sound(sound_file).play()
 
 def write_to_api(variable_name, variable_state):
-    """Writes or updates a variable and its state in api.py."""
-    api_file = "api.py"
-    updated = False
-    lines = []
+    """Writes or updates a variable and its state in api.py, removing leading/trailing spaces."""
+    file_path = "api.py"
+    updated_lines = []
+    variable_found = False
 
-    # Read existing lines from the file if it exists
+    # Clean the input if it's a string
+    if isinstance(variable_state, str):
+        variable_state = re.sub(r"^\s+|\s+$", "", variable_state)  # Remove leading and trailing spaces/newlines
+
+    # Read the file content if it exists
     try:
-        with open(api_file, "r") as file:
+        with open(file_path, "r") as file:
             lines = file.readlines()
+
+        for line in lines:
+            # Check if the line matches the variable to update
+            if line.startswith(f"{variable_name} ="):
+                # Update the variable
+                if isinstance(variable_state, str):
+                    updated_lines.append(f"{variable_name} = \"{variable_state}\"\n")
+                else:
+                    updated_lines.append(f"{variable_name} = {variable_state}\n")
+                variable_found = True
+            else:
+                # Retain the existing line
+                updated_lines.append(line)
+
     except FileNotFoundError:
+        # If the file doesn't exist, initialize an empty list
         pass
 
-    # Update the variable if it exists
-    for i, line in enumerate(lines):
-        if line.startswith(f"{variable_name} ="):
-            if isinstance(variable_state, str):
-                lines[i] = f"{variable_name} = \"{variable_state}\"\n"
-            else:
-                lines[i] = f"{variable_name} = {variable_state}\n"
-            updated = True
-            break
-
-    # Add the variable if it wasn't updated
-    if not updated:
+    # If the variable wasn't found, add it
+    if not variable_found:
         if isinstance(variable_state, str):
-            lines.append(f"{variable_name} = \"{variable_state}\"\n")
+            updated_lines.append(f"{variable_name} = \"{variable_state}\"\n")
         else:
-            lines.append(f"{variable_name} = {variable_state}\n")
+            updated_lines.append(f"{variable_name} = {variable_state}\n")
 
-    # Write back the updated lines
-    with open(api_file, "w") as file:
-        file.writelines(lines)
+    # Write the updated content back to the file
+    with open(file_path, "w") as file:
+        file.writelines(updated_lines)
 
 def choose_input_mode():
     """
@@ -159,6 +170,7 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
 
 # Voice Input Handling
 def get_voice_input():
+    no_response = False
     """Captures voice input using the SpeechRecognition library."""
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
@@ -166,19 +178,21 @@ def get_voice_input():
         try:
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=150)
             print(Fore.CYAN + "Processing your input..." + Style.RESET_ALL)
+            write_to_api("response", "yes")
             return recognizer.recognize_google(audio)
         except sr.WaitTimeoutError:
             print(Fore.RED + "No input detected. Switching to wake word detection..." + Style.RESET_ALL)
             playsound("src/wait.mp3")
-            wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
-            return ""
+            write_to_api("response", "no")
+            return "no reply"
         except sr.UnknownValueError:
             print(Fore.RED + "Sorry, I couldn't understand you." + Style.RESET_ALL)
+            write_to_api("response", "yes")
             return ""
         except Exception as e:
             print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
+            write_to_api("response", "yes")
             return ""
-
 
 def get_all_words_from_files_in_folder(folder_path):
     """
@@ -233,6 +247,8 @@ def get_input():
 
 # Conversation Loop
 def conversation_loop():
+    write_to_api("finished", False)
+    write_to_api("output", False)
     """Main loop to handle the conversation."""
     if interaction_mode == '2':
         print(Fore.YELLOW + "Listening for the wake word 'aurora'..." + Style.RESET_ALL)
@@ -294,24 +310,35 @@ def conversation_loop():
             print()
             write_to_api("output", output)
             send_output(output)
-            make_voice(voice_text=output, rate=1.3)
+            make_voice(voice_text=output, rate=1.0)
             save_conversation_to_file(conversation_history)
-            break
-
-        #Set up removing date and stuff from the AI
-        lasttime = datetime.now().strftime("[%Y-%m-%d %H:%M:%S],")
-        output = re.sub(r"[\(\[].*?[\)\]]", "", output)
-        output = re.sub('@E_SAD', '', output)
-        output = re.sub('@E_HAPPY', '', output)
-        output = re.sub('@E_MAD', '', output)
-        output = re.sub('@E_NERVOUS', '', output)
-        output = re.sub('@E_NEUTRAL', '', output)
-        output = re.sub('@E_SCARED', '', output)
-        output = re.sub('@END', '', output)
-        #Print AI's response because it needds to be printed!
-        print(Fore.GREEN + output + Style.RESET_ALL)
-        print()
-        make_voice(voice_text=output, rate=1.3)
+            write_to_api("output", "")
+            write_to_api("finished", True)
+            wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
+            
+        if api.finished == False:
+            #Set up removing date and stuff from the AI
+            lasttime = datetime.now().strftime("[%Y-%m-%d %H:%M:%S],")
+            output = re.sub(r"[\(\[].*?[\)\]]", "", output)
+            output = re.sub('@E_SAD', '', output)
+            output = re.sub('@E_HAPPY', '', output)
+            output = re.sub('@E_MAD', '', output)
+            output = re.sub('@E_NERVOUS', '', output)
+            output = re.sub('@E_NEUTRAL', '', output)
+            output = re.sub('@E_SCARED', '', output)
+            output = re.sub('@END', '', output)
+            #Print AI's response because it needds to be printed!
+            print(Fore.GREEN + output + Style.RESET_ALL)
+            print()
+            write_to_api("output", output)
+            make_voice(voice_text=output, rate=1.0)
+            
+        if api.finished == True:
+            write_to_api("finished", False)
+        
+        if api.response == "no":
+            write_to_api("response", "yes")
+            wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
 
 def save_conversation_to_file(conversation_history):
     """
@@ -375,6 +402,8 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
         print(f"Error deleting file: {e}")
         time.sleep(1)  # Wait for a moment before retrying
         os.remove(audio_file)  # Retry deleting the file
+    
+    write_to_api("output", "")
 # Main Execution
 if __name__ == "__main__":
     check_and_run('settings.py', 'config.py')  # Ensure settings.py exists
