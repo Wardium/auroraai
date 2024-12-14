@@ -11,6 +11,8 @@ def check_and_run(file_name, script_to_run):
     else:
         print(f"{file_name} exists.")
 
+import threading
+import random
 import google.generativeai as genai
 import colorama
 from colorama import Fore, Style
@@ -29,6 +31,8 @@ from pydub import AudioSegment
 from pydub.playback import play
 import api
 
+is_timer_active = False
+timer_thread = None
 emotion = ""
 GUI = False
 output = ""
@@ -57,6 +61,38 @@ def configure_gemini():
     return genai.GenerativeModel("gemini-1.5-flash"), genai.GenerativeModel("gemini-1.5-flash")
 
 model, end_detection_model = configure_gemini()
+
+def simplify_conversation(model, history):
+    """
+    Simplifies a conversation history using Gemini AI, extracting key information.
+
+    Args:
+    - model: The AI model instance for generating content.
+    - history (list): A list of message dictionaries. Each dictionary should contain:
+      - "timestamp": The timestamp of the message.
+      - "message": The content of the message.
+
+    Returns:
+    - list: A list of dictionaries containing the timestamp and the AI-simplified version of the message.
+    """
+    prompt_template = (
+        "You are an AI assistant tasked with simplifying and extracting the most important details from "
+        "a conversation. Focus on retaining key points, timestamps, and removing unnecessary filler words. "
+        "sum up the coversation in one or two sentences, then provide key info"
+        "if no valuable information is present, respond with '@NONE'"
+        "remove every word that starts with a '@'"
+        "any key points must have included time and date"
+        "always end with the final emotion type felt"
+        "Simplify the following message:\n\n" + history
+    )
+
+    # Use the AI model to simplify the message
+    simplified_message = model.generate_content(prompt_template)
+    
+    simplified_text = simplified_message.text.strip()
+    cleaned_text = re.sub('@NONE', '', simplified_text)
+    
+    return cleaned_text
 
 def playsound(sound_file):
     """Plays a sound asynchronously using pygame."""
@@ -123,11 +159,14 @@ def get_response(history, model):
     """Sends the conversation history to Gemini AI and returns the response."""
     write_to_api("waiting_for_response", "yes")
     try:
+        write_to_api("processing", True)
         response = model.generate_content(history)
         write_to_api("waiting_for_response", "no")
+        write_to_api("processing", False)
         return response.text.strip()  # Ensure clean response
     except Exception as e:
         write_to_api("waiting_for_response", "no")
+        write_to_api("processing", False)
         return f"An error occurred: {e}"
 
 def check_end_of_conversation(user_input, end_detection_model):
@@ -144,9 +183,12 @@ def check_end_of_conversation(user_input, end_detection_model):
 def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
     """Listens for a specific wake word or allows user to type input depending on the interaction mode."""
     recognizer = sr.Recognizer()
-
+    write_to_api("waiting", True)
+    start_timer()
     if interaction_mode == '1':  # Text mode
         typed_input = "ready"
+        write_to_api("waiting", False)
+        stop_timer()
         return typed_input
 
     elif interaction_mode == '2':  # Voice mode
@@ -154,12 +196,22 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
         with sr.Microphone() as source:
             while True:
                 try:
+                
+                    if api.random_talk == True:
+                        return ""
+                        
                     print(Fore.YELLOW + "Listening for the wake word..." + Style.RESET_ALL)
                     audio = recognizer.listen(source, timeout=5, phrase_time_limit=15)
                     detected_text = recognizer.recognize_google(audio).lower()
+                    
+                    if api.random_talk == True:
+                        return ""
+                        
                     if wake_word in detected_text:
                         playsound("src/listen.mp3")
                         print(Fore.CYAN + "Wake word detected. Starting conversation..." + Style.RESET_ALL)
+                        write_to_api("waiting", False)
+                        stop_timer()
                         return ""  # Exit the loop once the wake word is detected
                 except sr.UnknownValueError:
                     continue  # Ignore unrecognized input
@@ -168,17 +220,62 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                 except Exception as e:
                     print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
 
+def timer_function():
+    global is_timer_active
+
+    while is_timer_active:
+        # Generate a random duration between 5 and 30 minutes (converted to seconds)
+        duration = random.randint(300, 1000)
+        print(f"Timer started for {duration // 60} minutes.")
+
+        # Wait for the duration or until the timer is deactivated
+        start_time = time.time()
+        while is_timer_active and time.time() - start_time < duration:
+            time.sleep(1)  # Check every second if the timer is still active
+        
+        if is_timer_active:
+            print("Timer completed!")
+            write_to_api("random_talk", True)
+        else:
+            print("Timer was stopped before completion.")
+
+        # Reset the timer if still active
+        if not is_timer_active:
+            break
+
+def start_timer():
+    global is_timer_active, timer_thread
+
+    if not is_timer_active:
+        is_timer_active = True
+        timer_thread = threading.Thread(target=timer_function)
+        timer_thread.daemon = True  # Allows the thread to exit when the main program exits
+        timer_thread.start()
+
+def stop_timer():
+    global is_timer_active
+
+    is_timer_active = False
+    if timer_thread and timer_thread.is_alive():
+        timer_thread.join()  # Wait for the thread to finish if necessary
+        print("Timer has been stopped and reset.")
+
 # Voice Input Handling
 def get_voice_input():
-    no_response = False
+    write_to_api("response", "yes")
+    write_to_api("finished", False)
+    playsound("src/popon.mp3")
     """Captures voice input using the SpeechRecognition library."""
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
         print(Fore.YELLOW + "Listening..." + Style.RESET_ALL)
         try:
+            if api.random_talk == True:
+                return "@RANDOM"
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=150)
             print(Fore.CYAN + "Processing your input..." + Style.RESET_ALL)
             write_to_api("response", "yes")
+            playsound("src/popoff.mp3")
             return recognizer.recognize_google(audio)
         except sr.WaitTimeoutError:
             print(Fore.RED + "No input detected. Switching to wake word detection..." + Style.RESET_ALL)
@@ -247,27 +344,39 @@ def get_input():
 
 # Conversation Loop
 def conversation_loop():
+            
     write_to_api("finished", False)
     write_to_api("output", False)
-    """Main loop to handle the conversation."""
-    if interaction_mode == '2':
-        print(Fore.YELLOW + "Listening for the wake word 'aurora'..." + Style.RESET_ALL)
+    write_to_api("finished", False)
     
 
     lasttime = "never"
     conversation_history = get_all_words_from_files_in_folder("logs") + "\n" + personality + "\n" + "\n"
     write_to_api("waiting_for_input", "yes")
+    
     while True:
+    
+        if api.random_talk == True:
+            write_to_api("random_talk", False)
+            
+        write_to_api("waiting_for_input", "yes")
+        
         if interaction_mode == '1':
             output = "none"
             user_input = get_input()
         elif interaction_mode == '2':
             user_input = get_voice_input().strip()
+            while user_input == "":
+                user_input = get_voice_input().strip()
         else:
-            user_input = ""  # Fallback in case of an unexpected error
+            user_input = "no reply"  # Fallback in case of an unexpected error
             
+        print(user_input)
             
         user_input = "[AI LAST MESSAGE: " + lasttime + " CURRENT TIME: " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S]]") + user_input
+
+        if api.random_talk == True:
+            write_to_api("random_talk", False)
 
         if not user_input:
             continue
@@ -295,6 +404,9 @@ def conversation_loop():
             write_to_api("emotion", emotion)
         conversation_history = add_message_to_history(conversation_history, "AI", output)
 
+        if api.response == "no":
+            write_to_api("response", "yes")
+
         if "@END" in output:
             lasttime = datetime.now().strftime("[%Y-%m-%d %H:%M:%S],")
             output = re.sub(r"[\(\[].*?[\)\]]", "", output)
@@ -314,7 +426,7 @@ def conversation_loop():
             save_conversation_to_file(conversation_history)
             write_to_api("output", "")
             write_to_api("finished", True)
-            wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
+            return()
             
         if api.finished == False:
             #Set up removing date and stuff from the AI
@@ -327,18 +439,11 @@ def conversation_loop():
             output = re.sub('@E_NEUTRAL', '', output)
             output = re.sub('@E_SCARED', '', output)
             output = re.sub('@END', '', output)
-            #Print AI's response because it needds to be printed!
+            #Print AI's response because it needs to be printed!
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
             write_to_api("output", output)
             make_voice(voice_text=output, rate=1.0)
-            
-        if api.finished == True:
-            write_to_api("finished", False)
-        
-        if api.response == "no":
-            write_to_api("response", "yes")
-            wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
 
 def save_conversation_to_file(conversation_history):
     """
@@ -353,10 +458,11 @@ def save_conversation_to_file(conversation_history):
     log_file_path = os.path.join(logs_folder, f"conversation_{timestamp}.txt")
 
     # Write the conversation to the file
-    with open(log_file_path, "w") as log_file:
-        log_file.write(conversation_history)
-
-    print(f"Conversation saved to {log_file_path}")
+    simplified = simplify_conversation(model, conversation_history)
+    if simplified != "":
+        with open(log_file_path, "w") as log_file:
+            log_file.write(simplified)
+            print(f"Conversation saved to {log_file_path}")
 
 def add_message_to_history(history, speaker, message):
     """
@@ -370,6 +476,8 @@ def add_message_to_history(history, speaker, message):
     
 def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
     # Check if the setting 'speak' is enabled
+    if voice_text == "":
+        return()
     if not settings.speak:
         return  # Exit the function if speaking is disabled
     
@@ -407,6 +515,7 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
 # Main Execution
 if __name__ == "__main__":
     check_and_run('settings.py', 'config.py')  # Ensure settings.py exists
+    write_to_api("finished", False)
 
     # Assuming 'settings' is a module that contains a 'voice' variable
     import settings
@@ -426,7 +535,9 @@ if __name__ == "__main__":
             interaction_mode = '1'  # Default to text mode
 
     print(f"Selected interaction mode: {'Voice' if interaction_mode == '2' else 'Text'}")
-
+    
     # Assuming `wait_for_wake_word_or_input` and `conversation_loop` are functions already defined
-    wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
-    conversation_loop()
+    while True:
+        wait_for_wake_word_or_input(interaction_mode, wake_word="aurora")
+        conversation_loop()
+        write_to_api("finished", False)
