@@ -1,2 +1,0 @@
-python aurora.py
-pause
