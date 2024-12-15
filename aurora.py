@@ -31,6 +31,8 @@ from pydub import AudioSegment
 from pydub.playback import play
 import api
 
+
+current_time = datetime.now().time()
 is_timer_active = False
 timer_thread = None
 emotion = ""
@@ -48,10 +50,11 @@ personality = settings.personality_text + (
         "7. never prefix your response with AI:"
         "8. If the conversation ends, finish your reply with '@END'."
         "9. every message will contain a date and time, this is for you to know when the message was sent, please do not call upon this in a response."
-        "10. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' without anything around it."
+        "10. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' '@E_BORED' '@E_JUDGEMENTAL' without anything around it."
         "11. all messages in history and response has a time, use this to get proper time between respones and act accordingly."
         "12. if prompt is '@RANDOM' respond with a conversation starter, like you started the coversation with the user."
         "13. Never talk for the user"
+        "14. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
     )
 
 # Configure the Gemini AI API
@@ -235,7 +238,14 @@ def timer_function():
         
         if is_timer_active:
             print("Timer completed!")
-            write_to_api("random_talk", True)
+            
+            start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
+            end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
+            
+            if (current_time >= start_night or current_time <= end_night):
+                Continue
+            else:
+                write_to_api("random_talk", True)
         else:
             print("Timer was stopped before completion.")
 
@@ -387,6 +397,12 @@ def conversation_loop():
         if "@e_sad" in output.lower():
             emotion = "sad"
             write_to_api("emotion", emotion)
+        elif "@e_bored" in output.lower():
+            emotion = "bored"
+            write_to_api("emotion", emotion)
+        elif "@e_judgemental" in output.lower():
+            emotion = "judgemental"
+            write_to_api("emotion", emotion)
         elif "@e_happy" in output.lower():
             emotion = "happy"
             write_to_api("emotion", emotion)
@@ -422,7 +438,10 @@ def conversation_loop():
             print()
             write_to_api("output", output)
             send_output(output)
-            make_voice(voice_text=output, rate=1.0)
+            if output.strip():  # Check if output is not empty or whitespace
+                make_voice(voice_text=output, rate=1.0)
+            else:
+                print("Output is empty; skipping TTS generation.")
             save_conversation_to_file(conversation_history)
             write_to_api("output", "")
             write_to_api("finished", True)
@@ -443,7 +462,10 @@ def conversation_loop():
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
             write_to_api("output", output)
-            make_voice(voice_text=output, rate=1.0)
+            if output.strip():  # Check if output is not empty or whitespace
+                make_voice(voice_text=output, rate=1.0)
+            else:
+                print("Output is empty; skipping TTS generation.")
 
 def save_conversation_to_file(conversation_history):
     """
