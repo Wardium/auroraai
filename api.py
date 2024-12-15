@@ -1,0 +1,9 @@
+waiting_for_input = "no"
+waiting_for_response = "no"
+emotion = "sad"
+output = ""
+response = "yes"
+finished = False
+waiting = True
+processing = False
+random_talk = False
