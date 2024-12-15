@@ -8,9 +8,25 @@ import os
 import importlib
 import api
 import subprocess
+from datetime import datetime
+
+
+sleep_timer = False
+blinking = False
+do_once = False
+current_time = datetime.now().time()
+is_timer_active = False
+is_blink_active = False
+timer_thread = None
+blink_thread = None
+sleep = False
+blink_image = f"src/eyes/waiting/blink_waiting.png"
+waiting_eyes = f"src/eyes/waiting/waiting/png"
 
 class FloatingImageApp:
+    
     def __init__(self, root):
+        
         self.root = root
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='black')
@@ -59,6 +75,90 @@ class FloatingImageApp:
 
         # Bind escape key to exit full screen
         self.root.bind('<Escape>', lambda e: self.root.destroy())
+
+    def blink_function(self):
+        global blinking, do_once, is_blink_active
+        
+        blink_image = f"src/eyes/blink_waiting.png"
+        
+        if blinking == True:
+            return()
+            
+        while is_blink_active:
+            blinking = True
+            # Generate a random duration between 5 and 30 minutes (converted to seconds)
+            duration = random.randint(2, 10)
+
+            # Wait for the duration or until the timer is deactivated
+            start_time = time.time()
+            while is_blink_active and time.time() - start_time < duration:
+                time.sleep(1)  # Check every second if the timer is still active
+        
+            if is_blink_active:
+                new_image = Image.open(blink_image).resize((500, 500), Image.Resampling.LANCZOS)
+                self.photo = ImageTk.PhotoImage(new_image)
+                self.canvas.itemconfig(self.image_id, image=self.photo)
+            else:
+                print("Blink was stopped before completion.")
+                
+            time.sleep(random.uniform(0.1, 0.4))
+            
+            if self.api.waiting == True:
+                try:
+                    new_image = Image.open(waiting_eyes).resize((500, 500), Image.Resampling.LANCZOS)
+                    self.photo = ImageTk.PhotoImage(new_image)
+                    self.canvas.itemconfig(self.image_id, image=self.photo)
+                    blink_image = f"src/eyes/blink_waiting.png"
+                except FileNotFoundError:
+                    pass  # Ignore if the image doesn't exist
+            else:
+                try:
+                    new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+                    self.photo = ImageTk.PhotoImage(new_image)
+                    self.canvas.itemconfig(self.image_id, image=self.photo)
+                    blink_image = f"src/eyes/blink.png"
+                except FileNotFoundError:
+                    pass  # Ignore if the image doesn't exist
+
+            # Reset the timer if still active
+            if not is_blink_active:
+                blinking = False
+                do_once = False
+
+    def blinking_timer(self):
+        global blinking, do_once, is_blink_active, blink_thread
+
+        if not is_blink_active:
+            if blinking == True:
+                return
+            else:
+                is_blink_active = True
+                blink_thread = threading.Thread(target=self.blink_function)
+                blink_thread.daemon = True  # Allows the thread to exit when the main program exits
+                blink_thread.start()
+
+    def timer_function(self):
+        global is_timer_active
+
+        while is_timer_active:
+            # Generate a random duration between 5 and 30 minutes (converted to seconds)
+            duration = random.randint(100, 300)
+            print(f"Timer started for {duration // 60} minutes.")
+
+            # Wait for the duration or until the timer is deactivated
+            start_time = time.time()
+            while is_timer_active and time.time() - start_time < duration:
+                time.sleep(1)  # Check every second if the timer is still active
+            
+            if is_timer_active:
+                print("Timer completed!")
+                self.sleep()
+            else:
+                print("Timer was stopped before completion.")
+
+            # Reset the timer if still active
+            if not is_timer_active:
+                break
 
     def load_api_variables(self):
         # Dynamically reload the api.py file to reflect changes
@@ -120,9 +220,43 @@ class FloatingImageApp:
 
         # Return the dynamically created api object
         return api_namespace
-        
-    def monitor_api(self):
     
+    def start_timer(self):
+        global sleep_timer, is_timer_active, timer_thread
+
+        if not is_timer_active:
+            if sleep_timer == False:
+                is_timer_active = True
+                timer_thread = threading.Thread(target=self.timer_function)
+                timer_thread.daemon = True  # Allows the thread to exit when the main program exits
+                timer_thread.start()
+
+    def stop_timer(self):
+        global is_timer_active
+        
+        if sleep_timer == True:
+            is_timer_active = False
+            if timer_thread and timer_thread.is_alive():
+                timer_thread.join()  # Wait for the thread to finish if necessary
+                print("Timer has been stopped and reset.")
+
+    def sleep(self):
+        start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
+        end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
+
+        if (current_time >= start_night or current_time <= end_night):
+            sleep = True
+            new_image_path = f"src/eyes/sleep.png"
+            new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+            self.photo = ImageTk.PhotoImage(new_image)
+            self.canvas.itemconfig(self.image_id, image=self.photo)
+        else:
+            sleep = False
+    
+    def monitor_api(self):
+        
+        global sleep, do_once
+        
         self.load_api_variables()
         
         # Read current content of the api.py file
@@ -134,6 +268,13 @@ class FloatingImageApp:
 
             # Dynamically evaluate variables from api.py using exec
             exec(current_content, globals(), locals())
+
+            if sleep == True:
+                if self.api.waiting == False:
+                    sleep = False
+                else:
+                    return()
+
 
             # Check the 'processing' variable
             if self.api.processing:
@@ -154,6 +295,7 @@ class FloatingImageApp:
             if hasattr(api, 'emotion'):
                 try:
                     new_image_path = f"src/eyes/{api.emotion}.png"
+                    waiting_eyes = f"src/eyes/waiting/{api.emotion}.png"
                     new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
@@ -176,24 +318,39 @@ class FloatingImageApp:
 
             if self.api.waiting == True:
                 try:
-                    new_image_path = f"src/eyes/waiting.png"
-                    new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(waiting_eyes).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
+                    blink_image = f"src/eyes/blink_waiting.png"
+                    self.start_timer()
                 except FileNotFoundError:
                     pass  # Ignore if the image doesn't exist
             else:
                 try:
-                    new_image_path = f"src/eyes/eyes.png"
                     new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
+                    blink_image = f"src/eyes/blink.png"
+                    self.stop_timer()
                 except FileNotFoundError:
                     pass  # Ignore if the image doesn't exist
                 
         # Schedule the next check
+        
+        if do_once == False:
+            do_once = True
+            print("Did Once ")
+            self.blinking_timer()
         self.root.after(100, self.monitor_api)  # Check for updates every 100ms
 
+def start_timer():
+    global is_timer_active, timer_thread
+
+    if not is_timer_active:
+        is_timer_active = True
+        timer_thread = threading.Thread(target=timer_function)
+        timer_thread.daemon = True  # Allows the thread to exit when the main program exits
+        timer_thread.start()
 
 if __name__ == "__main__":
     root = tk.Tk()
