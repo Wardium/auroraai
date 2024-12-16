@@ -31,3 +31,13 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
    
 ## Warning!
   This AI uses Google Gemini API, you'll need to get it from AI Studio
+
+---
+
+## Road
+
+- Music Player
+- Timer
+- Auto Log Deletion
+- Better Voice
+- Completely Locally Ran Mode
