@@ -98,9 +98,12 @@ class FloatingImageApp:
         self.root.bind('<Escape>', lambda e: self.root.destroy())
 
     def blink_function(self):
-        global blink_image, blinking, do_once, is_blink_active
+        global sleep, blink_image, blinking, do_once, is_blink_active
         
         blink_image = "src/eyes/waiting/blink_waiting.png"
+        
+        if sleep == True:
+            return()
         
         if blinking == True:
             return()
