@@ -20,10 +20,25 @@ is_blink_active = False
 timer_thread = None
 blink_thread = None
 sleep = False
-blink_image = f"src/eyes/waiting/blink_waiting.png"
-waiting_eyes = f"src/eyes/waiting/waiting/png"
+blink_image = "src/eyes/waiting/blink_waiting.png"
+waiting_eyes = "src/eyes/waiting/waiting.png"
 
 class FloatingImageApp:
+    
+    def fade_in(self):
+        """Fades the application window in slowly."""
+        alpha = 0.0  # Initial transparency value
+        increment = 0.01  # Increase in transparency per frame
+        delay = 10  # Time in ms between updates
+
+        def increment_alpha():
+            nonlocal alpha
+            if alpha < 1.0:  # Maximum transparency level
+                alpha += increment
+                self.root.attributes('-alpha', alpha)
+                self.root.after(delay, increment_alpha)
+
+        increment_alpha()
     
     def __init__(self, root):
         
@@ -32,6 +47,12 @@ class FloatingImageApp:
         self.root.configure(bg='black')
         root.title("Aurora AI")  # Set the window title
         root.iconbitmap("src/icon.ico")
+        
+        # Initialize the transparency to 0 (fully transparent)
+        self.root.attributes('-alpha', 0.0)
+
+        # Call the fade-in effect
+        self.fade_in()
         
         # Initialize previous content as None
         self.previous_content = None
@@ -77,13 +98,32 @@ class FloatingImageApp:
         self.root.bind('<Escape>', lambda e: self.root.destroy())
 
     def blink_function(self):
-        global blinking, do_once, is_blink_active
+        global blink_image, blinking, do_once, is_blink_active
         
-        blink_image = f"src/eyes/blink_waiting.png"
+        blink_image = "src/eyes/waiting/blink_waiting.png"
         
         if blinking == True:
             return()
             
+        if self.api.waiting == True:
+            try:
+                blink_image = "src/eyes/waiting/blink_waiting.png"
+            except FileNotFoundError:
+                pass  # Ignore if the image doesn't exist
+        else:
+            try:
+                blink_image = "src/eyes/blink.png"
+            except FileNotFoundError:
+                pass  # Ignore if the image doesn't exist
+                
+                
+        if hasattr(api, 'emotion'):
+            try:
+                new_image_path = f"src/eyes/{api.emotion}.png"
+                waiting_eyes = f"src/eyes/waiting/{api.emotion}.png"
+            except FileNotFoundError:
+                pass  # Ignore if the image doesn't exist
+        
         while is_blink_active:
             blinking = True
             # Generate a random duration between 5 and 30 minutes (converted to seconds)
@@ -108,7 +148,7 @@ class FloatingImageApp:
                     new_image = Image.open(waiting_eyes).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
-                    blink_image = f"src/eyes/blink_waiting.png"
+                    blink_image = "src/eyes/waiting/blink_waiting.png"
                 except FileNotFoundError:
                     pass  # Ignore if the image doesn't exist
             else:
@@ -116,7 +156,7 @@ class FloatingImageApp:
                     new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
-                    blink_image = f"src/eyes/blink.png"
+                    blink_image = "src/eyes/blink.png"
                 except FileNotFoundError:
                     pass  # Ignore if the image doesn't exist
 
@@ -255,7 +295,7 @@ class FloatingImageApp:
     
     def monitor_api(self):
         
-        global sleep, do_once
+        global blink_image, sleep, do_once
         
         self.load_api_variables()
         
@@ -273,6 +313,10 @@ class FloatingImageApp:
                 if self.api.waiting == False:
                     sleep = False
                 else:
+                    if do_once == False:
+                        do_once = True
+                        print("Did Once ")
+                        self.blinking_timer()
                     return()
 
 
@@ -321,7 +365,7 @@ class FloatingImageApp:
                     new_image = Image.open(waiting_eyes).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
-                    blink_image = f"src/eyes/blink_waiting.png"
+                    blink_image = "src/eyes/waiting/blink_waiting.png"
                     self.start_timer()
                 except FileNotFoundError:
                     pass  # Ignore if the image doesn't exist
@@ -330,7 +374,7 @@ class FloatingImageApp:
                     new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
-                    blink_image = f"src/eyes/blink.png"
+                    blink_image = "src/eyes/blink.png"
                     self.stop_timer()
                 except FileNotFoundError:
                     pass  # Ignore if the image doesn't exist
