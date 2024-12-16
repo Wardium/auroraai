@@ -30,8 +30,10 @@ import time
 from pydub import AudioSegment
 from pydub.playback import play
 import api
+import importlib
 
 
+random_talk = False
 current_time = datetime.now().time()
 is_timer_active = False
 timer_thread = None
@@ -39,6 +41,7 @@ emotion = ""
 GUI = False
 output = ""
 send = False
+
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
         "1. The Users name is: " + settings.name + ". "
@@ -52,7 +55,7 @@ personality = settings.personality_text + (
         "9. every message will contain a date and time, this is for you to know when the message was sent, please do not call upon this in a response."
         "10. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' '@E_BORED' '@E_JUDGEMENTAL' without anything around it."
         "11. all messages in history and response has a time, use this to get proper time between respones and act accordingly."
-        "12. if prompt is '@RANDOM' respond with a conversation starter, like you started the coversation with the user."
+        "12. if prompted with @RANDOM: respond with a conversation starter, like you started the coversation with the user."
         "13. Never talk for the user"
         "14. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
     )
@@ -185,6 +188,7 @@ def check_end_of_conversation(user_input, end_detection_model):
 # Wake Word Listening and Input Handling
 def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
     """Listens for a specific wake word or allows user to type input depending on the interaction mode."""
+    
     recognizer = sr.Recognizer()
     write_to_api("waiting", True)
     start_timer()
@@ -200,7 +204,13 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
             while True:
                 try:
                 
+                    importlib.reload(api)
+                    
+                    print(f"Random: {api.random_talk}")
+                    
                     if api.random_talk == True:
+                        write_to_api("waiting", False)
+                        stop_timer()
                         return ""
                         
                     print(Fore.YELLOW + "Listening for the wake word..." + Style.RESET_ALL)
@@ -208,6 +218,8 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                     detected_text = recognizer.recognize_google(audio).lower()
                     
                     if api.random_talk == True:
+                        write_to_api("waiting", False)
+                        stop_timer()
                         return ""
                         
                     if wake_word in detected_text:
@@ -229,7 +241,7 @@ def timer_function():
     while is_timer_active:
         # Generate a random duration between 5 and 30 minutes (converted to seconds)
         duration = random.randint(300, 1000)
-        print(f"Timer started for {duration // 60} minutes.")
+        print(f"Random Timer started for {duration // 60} minutes.")
 
         # Wait for the duration or until the timer is deactivated
         start_time = time.time()
@@ -237,7 +249,7 @@ def timer_function():
             time.sleep(1)  # Check every second if the timer is still active
         
         if is_timer_active:
-            print("Timer completed!")
+            print("Random Timer completed!")
             
             start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
             end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
@@ -246,8 +258,9 @@ def timer_function():
                 Continue
             else:
                 write_to_api("random_talk", True)
+                random_talk = True
         else:
-            print("Timer was stopped before completion.")
+            print("Random Timer was stopped before completion.")
 
         # Reset the timer if still active
         if not is_timer_active:
@@ -356,7 +369,7 @@ def get_input():
 def conversation_loop():
             
     write_to_api("finished", False)
-    write_to_api("output", False)
+    write_to_api("output", "")
     write_to_api("finished", False)
     
 
@@ -368,6 +381,7 @@ def conversation_loop():
     
         if api.random_talk == True:
             write_to_api("random_talk", False)
+            random_talk = False
             
         write_to_api("waiting_for_input", "yes")
         
@@ -384,9 +398,11 @@ def conversation_loop():
         print(user_input)
             
         user_input = "[AI LAST MESSAGE: " + lasttime + " CURRENT TIME: " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S]]") + user_input
-
+        
+        importlib.reload(api)
         if api.random_talk == True:
             write_to_api("random_talk", False)
+            random_talk = False
 
         if not user_input:
             continue
@@ -443,6 +459,8 @@ def conversation_loop():
             else:
                 print("Output is empty; skipping TTS generation.")
             save_conversation_to_file(conversation_history)
+            output = re.sub(r'\band\b|\*', '', output)
+            output = re.sub(r'\s+', ' ', output).strip()
             write_to_api("output", "")
             write_to_api("finished", True)
             return()
@@ -461,6 +479,8 @@ def conversation_loop():
             #Print AI's response because it needs to be printed!
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
+            output = re.sub(r'\band\b|\*', '', output)
+            output = re.sub(r'\s+', ' ', output).strip()
             write_to_api("output", output)
             if output.strip():  # Check if output is not empty or whitespace
                 make_voice(voice_text=output, rate=1.0)
