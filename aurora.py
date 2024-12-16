@@ -58,6 +58,8 @@ personality = settings.personality_text + (
         "12. if prompted with @RANDOM: respond with a conversation starter, like you started the coversation with the user."
         "13. Never talk for the user"
         "14. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
+        "15. NEVER use quotation marks or astrisks"
+        "16. between the times 8:00 PM, and 7:00 AM, you are sleeping, you still respond but act like you were woken up"
     )
 
 # Configure the Gemini AI API
