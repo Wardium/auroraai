@@ -18,6 +18,8 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 
 ## Installation  
 
+- **Note:** This project requires, a **speaker**, **microphone**, and a **visual display**
+
 1. **Clone the Repository**:  
    ```bash
    git clone https://github.com/yourusername/aurora-ai.git
@@ -31,7 +33,8 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 
    
 ## Warning!
-  This AI uses Google Gemini API, you'll need to get it from AI Studio
+  - This AI uses Google Gemini API, you'll need to get it from AI Studio
+  - Website: https://aistudio.google.com
 
 ---
 
