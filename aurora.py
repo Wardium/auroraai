@@ -460,6 +460,7 @@ def conversation_loop():
                 print("Output is empty; skipping TTS generation.")
             save_conversation_to_file(conversation_history)
             output = re.sub(r'\band\b|\*', '', output)
+            output = re.sub('"', '', output)
             output = re.sub(r'\s+', ' ', output).strip()
             write_to_api("output", "")
             write_to_api("finished", True)
@@ -480,6 +481,7 @@ def conversation_loop():
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
             output = re.sub(r'\band\b|\*', '', output)
+            output = re.sub('"', '', output)
             output = re.sub(r'\s+', ' ', output).strip()
             write_to_api("output", output)
             if output.strip():  # Check if output is not empty or whitespace
