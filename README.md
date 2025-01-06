@@ -1,3 +1,5 @@
+![Aurora](src/eyes/neutral.png)
+
 # Aurora AI  
 
 Aurora AI is a multi-functional AI assistant built with Python. It leverages natural language processing, speech recognition, and text-to-speech capabilities to interact seamlessly with users. This project integrates Google Gemini AI for content generation, audio playback tools, and utility libraries for enhanced functionality.  
