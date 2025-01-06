@@ -2,6 +2,10 @@ import threading
 import subprocess
 import os
 import signal
+import colorama
+from colorama import Fore, Style
+from colorama import just_fix_windows_console
+just_fix_windows_console()
 import keyboard  # Install using `pip install keyboard`
 
 # List to track subprocesses
@@ -19,15 +23,14 @@ def terminate_processes():
         try:
             os.kill(process.pid, signal.SIGTERM)  # Send terminate signal
             process.wait()  # Ensure the process is terminated
-            print(f"Terminated process {process.pid} for {process.args[1]}")
+            print(Fore.RED + f"Terminated process {process.pid} for {process.args[1]}" + Style.RESET_ALL)
         except Exception as e:
-            print(f"Failed to terminate process {process.pid}: {e}")
+            print(Fore.RED + f"Failed to terminate process {process.pid}: {e}" + Style.RESET_ALL)
 
 def esc_listener():
     # Listen for Escape key to terminate processes
-    print("Press 'Escape' to terminate all processes.")
     keyboard.wait("esc")  # Block until 'esc' key is pressed
-    print("Escape key pressed! Terminating subprocesses...")
+    print(Fore.RED + "Escape key pressed! Terminating Aurora..." + Style.RESET_ALL)
     terminate_processes()  # Stop all subprocesses safely
     os._exit(0)  # Exit the main script immediately
 
@@ -44,13 +47,13 @@ if __name__ == "__main__":
         script1_thread.start()
         script2_thread.start()
 
-        print("Scripts are running. Press 'Escape' or 'Ctrl+C' to stop both.")
+        print(Fore.GREEN + "Aurora is running. Press 'Escape' or 'Ctrl+C' to stop." + Style.RESET_ALL)
         
         # Keep the main thread running (could replace this with UI or other logic)
         script1_thread.join()
         script2_thread.join()
 
     except KeyboardInterrupt:
-        print("Interrupt received. Terminating subprocesses...")
+        print(Fore.RED + "Interrupt received. Terminating Aurora..." + Style.RESET_ALL)
         terminate_processes()  # Stop all subprocesses safely
-        print("All subprocesses terminated. Exiting program.")
+        print(Fore.RED + "All subprocesses terminated. Exiting Aurora." + Style.RESET_ALL)
