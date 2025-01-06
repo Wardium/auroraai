@@ -1,7 +1,12 @@
+import colorama
+from colorama import just_fix_windows_console
+just_fix_windows_console()
+from colorama import Fore, Style
+
 def check_and_run(file_name, script_to_run):
     # Check if the file exists in the current directory
     if not os.path.exists(file_name):
-        print(f"{file_name} does not exist. Running {script_to_run}...")
+        print(Fore.LIGHTBLACK_EX + f"{file_name} does not exist. Running {script_to_run}..." + Style.RESET_ALL)
         
         # Run the entire .py script in the same directory
         subprocess.run([sys.executable, script_to_run])
@@ -9,13 +14,12 @@ def check_and_run(file_name, script_to_run):
         # Exit the current script
         sys.exit()
     else:
-        print(f"{file_name} exists.")
+        print(Fore.LIGHTBLACK_EX + f"{file_name} exists." + Style.RESET_ALL)
 
 import threading
 import random
 import google.generativeai as genai
 import colorama
-from colorama import Fore, Style
 import speech_recognition as sr
 import os
 from datetime import datetime
@@ -184,7 +188,7 @@ def check_end_of_conversation(user_input, end_detection_model):
         response = end_detection_model.generate_content(prompt)
         return "yes" in response.text.lower()
     except Exception as e:
-        print(f"An error occurred during end detection: {e}")
+        print(Fore.LIGHTBLACK_EX + f"An error occurred during end detection: {e}" + Style.RESET_ALL)
         return False
 
 # Wake Word Listening and Input Handling
@@ -208,7 +212,7 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                 
                     importlib.reload(api)
                     
-                    print(f"Random: {api.random_talk}")
+                    print(Fore.LIGHTBLACK_EX + f"Random: {api.random_talk}" + Style.RESET_ALL)
                     
                     if api.random_talk == True:
                         write_to_api("waiting", False)
@@ -243,7 +247,7 @@ def timer_function():
     while is_timer_active:
         # Generate a random duration between 5 and 30 minutes (converted to seconds)
         duration = random.randint(300, 1000)
-        print(f"Random Timer started for {duration // 60} minutes.")
+        print(Fore.LIGHTBLACK_EX + f"Random Timer started for {duration // 60} minutes." + Style.RESET_ALL)
 
         # Wait for the duration or until the timer is deactivated
         start_time = time.time()
@@ -251,7 +255,7 @@ def timer_function():
             time.sleep(1)  # Check every second if the timer is still active
         
         if is_timer_active:
-            print("Random Timer completed!")
+            print(Fore.LIGHTBLACK_EX + "Random Timer completed!" + Style.RESET_ALL)
             
             start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
             end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
@@ -262,7 +266,7 @@ def timer_function():
                 write_to_api("random_talk", True)
                 random_talk = True
         else:
-            print("Random Timer was stopped before completion.")
+            print(Fore.LIGHTBLACK_EX + "Random Timer was stopped before completion." + Style.RESET_ALL)
 
         # Reset the timer if still active
         if not is_timer_active:
@@ -283,7 +287,7 @@ def stop_timer():
     is_timer_active = False
     if timer_thread and timer_thread.is_alive():
         timer_thread.join()  # Wait for the thread to finish if necessary
-        print("Timer has been stopped and reset.")
+        print(Fore.LIGHTBLACK_EX + "Timer has been stopped and reset." + Style.RESET_ALL)
 
 # Voice Input Handling
 def get_voice_input():
@@ -328,7 +332,7 @@ def get_all_words_from_files_in_folder(folder_path):
         str: Combined content of all files in the folder.
     """
     if not os.path.isdir(folder_path):
-        print(f"Error: The folder '{folder_path}' does not exist or is not a directory.")
+        print(Fore.LIGHTBLACK_EX + f"Error: The folder '{folder_path}' does not exist or is not a directory." + Style.RESET_ALL)
         return ""
 
     all_text = []
@@ -345,9 +349,9 @@ def get_all_words_from_files_in_folder(folder_path):
                         content = "[PAST HISTORY: " + file.read() +" END OF HISTORY] \n \n \n"
                         all_text.append(content)
                 except Exception as e:
-                    print(f"Error reading file '{file_path}': {e}")
+                    print(Fore.LIGHTBLACK_EX + f"Error reading file '{file_path}': {e}" + Style.RESET_ALL)
     except Exception as e:
-        print(f"Error accessing folder '{folder_path}': {e}")
+        print(Fore.LIGHTBLACK_EX + f"Error accessing folder '{folder_path}': {e}" + Style.RESET_ALL)
         return ""
 
     # Join all file contents into a single string
@@ -360,7 +364,7 @@ def get_input():
     if GUI == True:
         while (visual.send == False):
             user_input = visual.input
-            print("Waiting For Send... Current Value: " + str(visual.send))
+            print(Fore.LIGHTBLACK_EX + "Waiting For Send... Current Value: " + Style.RESET_ALL + str(visual.send))
             time.sleep(0.1) #Check every 100 ms
         visual.send = False
     else:
@@ -397,7 +401,7 @@ def conversation_loop():
         else:
             user_input = "no reply"  # Fallback in case of an unexpected error
             
-        print(user_input)
+        print(Fore.BLUE + user_input + Style.RESET_ALL)
             
         user_input = "[AI LAST MESSAGE: " + lasttime + " CURRENT TIME: " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S]]") + user_input
         
@@ -459,7 +463,7 @@ def conversation_loop():
             if output.strip():  # Check if output is not empty or whitespace
                 make_voice(voice_text=output, rate=1.0)
             else:
-                print("Output is empty; skipping TTS generation.")
+                print(Fore.LIGHTBLACK_EX + "Output is empty; skipping TTS generation." + Style.RESET_ALL)
             save_conversation_to_file(conversation_history)
             output = re.sub(r'\band\b|\*', '', output)
             output = re.sub('"', '', output)
@@ -489,7 +493,7 @@ def conversation_loop():
             if output.strip():  # Check if output is not empty or whitespace
                 make_voice(voice_text=output, rate=1.0)
             else:
-                print("Output is empty; skipping TTS generation.")
+                print(Fore.LIGHTBLACK_EX + "Output is empty; skipping TTS generation." + Style.RESET_ALL)
 
 def save_conversation_to_file(conversation_history):
     """
@@ -508,7 +512,8 @@ def save_conversation_to_file(conversation_history):
     if simplified != "":
         with open(log_file_path, "w") as log_file:
             log_file.write(simplified)
-            print(f"Conversation saved to {log_file_path}")
+            print(Fore.RED + "Conversation Ended." + Style.RESET_ALL)
+            print(Fore.LIGHTBLACK_EX + f"Conversation saved to {log_file_path}" + Style.RESET_ALL)
 
 def add_message_to_history(history, speaker, message):
     """
@@ -553,7 +558,7 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
     try:
         os.remove(audio_file)  # Delete the file
     except PermissionError as e:
-        print(f"Error deleting file: {e}")
+        print(Fore.LIGHTBLACK_EX + f"Error deleting file: {e}" + Style.RESET_ALL)
         time.sleep(1)  # Wait for a moment before retrying
         os.remove(audio_file)  # Retry deleting the file
     
