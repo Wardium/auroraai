@@ -10,7 +10,6 @@ import api
 import subprocess
 from datetime import datetime
 
-
 sleep_timer = False
 blinking = False
 do_once = False
@@ -129,7 +128,7 @@ class FloatingImageApp:
         
         while is_blink_active:
             blinking = True
-            # Generate a random duration between 5 and 30 minutes (converted to seconds)
+            # Generate a random duration between 2 and 10 seconds (converted to seconds)
             duration = random.randint(2, 10)
 
             # Wait for the duration or until the timer is deactivated
@@ -148,7 +147,7 @@ class FloatingImageApp:
             
             if self.api.waiting == True:
                 try:
-                    new_image = Image.open(waiting_eyes).resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(f"src/eyes/waiting/{api.emotion}.png").resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                     blink_image = "src/eyes/waiting/blink_waiting.png"
@@ -156,7 +155,7 @@ class FloatingImageApp:
                     pass  # Ignore if the image doesn't exist
             else:
                 try:
-                    new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(f"src/eyes/{api.emotion}.png").resize((500, 500), Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                     blink_image = "src/eyes/blink.png"
@@ -400,6 +399,11 @@ def start_timer():
         timer_thread.start()
 
 if __name__ == "__main__":
+    import colorama
+    from colorama import Fore, Style
+    from colorama import just_fix_windows_console
+    just_fix_windows_console()
+    print(Style.DIM + "GUI Started.")
     root = tk.Tk()
     app = FloatingImageApp(root)
     root.mainloop()
