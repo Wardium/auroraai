@@ -32,8 +32,9 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 ---
 
    
-## Warning!
+## Warnings!
   - Remove 'PLACEHOLDER' From Logs, Will Not Work If It's There!
+  - This Project Uses FFMPEG, please download it!
   - This AI uses Google Gemini API, you'll need to get it from AI Studio
   - Website: https://aistudio.google.com
 
