@@ -10,7 +10,10 @@ import api
 import subprocess
 from datetime import datetime
 import colorama
+import settings
 
+image_size = (500, 500)
+smallgui = settings.small_gui
 sleep_timer = False
 blinking = False
 do_once = False
@@ -22,6 +25,17 @@ blink_thread = None
 sleep = False
 blink_image = "src/eyes/waiting/blink_waiting.png"
 waiting_eyes = "src/eyes/waiting/waiting.png"
+
+def set_image_size(smallgui=False):
+    global image_size
+    if smallgui:
+        image_size = (200, 200)  # Set to smaller size for smallgui
+    else:
+        image_size = (500, 500)  # Set to larger size for normal gui
+
+set_image_size(smallgui)
+
+print(f"{image_size}")
 
 class FloatingImageApp:
     
@@ -42,60 +56,157 @@ class FloatingImageApp:
     
     def __init__(self, root):
         
+        self.load_api_variables()
+        
         self.root = root
-        self.root.attributes('-fullscreen', True)
-        self.root.configure(bg='black')
+        self.smallgui = smallgui
         root.title("Aurora AI")  # Set the window title
         root.iconbitmap("src/icon.ico")
         
-        # Initialize the transparency to 0 (fully transparent)
-        self.root.attributes('-alpha', 0.0)
+        if self.smallgui:
+            self.root.wm_attributes("-topmost", 1)
+            self.root.geometry("200x200+0+-50")  # Small window in the top-left corner
+            self.root.attributes('-alpha', 0.0)  # Fully transparent background
+            self.root.overrideredirect(True)  # Remove window title bar and borders
+            self.root.wm_attributes('-transparentcolor', 'black')  # Set transparency color to white
+            
+            # Disable interactions (unclickable)
+            self.root.bind("<Button-1>", lambda e: "break")  # Disable mouse click
+            self.fade_in()
 
-        # Call the fade-in effect
-        self.fade_in()
+
+
+
+
+
+        else:
+            # Fullscreen mode for normal behavior
+            self.root.attributes('-fullscreen', True)
+            self.root.configure(bg='black')
+            root.title("Aurora AI")  # Set the window title
+            root.iconbitmap("src/icon.ico")
+
+            # Initialize the transparency to 0 (fully transparent)
+            self.root.attributes('-alpha', 0.0)
+
+            # Call the fade-in effect (you can implement this as a separate method if needed)
+            self.fade_in()
         
         # Initialize previous content as None
         self.previous_content = None
 
-        # Load the initial image
-        self.image_path = 'src/eyes/eyes.png'
-        self.image = Image.open(self.image_path).resize((500, 500), Image.Resampling.LANCZOS)
-        self.photo = ImageTk.PhotoImage(self.image)
+        set_image_size(smallgui)
+        
+        
+        if not self.smallgui:
+            # Load the initial image
+            self.image_path = 'src/eyes/eyes.png'
+            self.image = Image.open(self.image_path).resize(image_size, Image.Resampling.LANCZOS)
+            self.photo = ImageTk.PhotoImage(self.image)
 
-        # Create a canvas to hold the image
-        self.canvas = tk.Canvas(root, bg='black', highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+            # Create a canvas to hold the image
+            self.canvas = tk.Canvas(root, bg='black', highlightthickness=0)
+            self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Add the image to the canvas
-        self.image_id = self.canvas.create_image(0, 0, anchor=tk.CENTER, image=self.photo)
+            # Add the image to the canvas
+        
+            self.image_id = self.canvas.create_image(0, 0, anchor=tk.CENTER, image=self.photo)
+        else:
+            # Load the initial image
+            self.image_path = 'src/eyes/eyes.png'
+            self.image = Image.open(self.image_path).resize((200, 200), Image.Resampling.LANCZOS)
+            self.photo = ImageTk.PhotoImage(self.image)
 
-        # Initialize position and velocity
-        self.x_pos = self.root.winfo_screenwidth() // 2
-        self.y_pos = self.root.winfo_screenheight() // 2
-        self.x_velocity = random.uniform(-0.5, 0.5)  # Initial velocity for x
-        self.y_velocity = random.uniform(-0.5, 0.5)  # Initial velocity for y
-        self.radius = 100  # Radius to limit movement
-        self.center_x = self.x_pos
-        self.center_y = self.y_pos
+            # Create a canvas to hold the image
+            self.canvas = tk.Canvas(root, bg='black', highlightthickness=0)
+            self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Physics parameters
-        self.friction = 0.98  # Simulate gradual slowing
-        self.acceleration = 0.01  # Gradual acceleration to change direction
-        self.min_velocity = 0.1  # Minimum velocity to prevent stopping
+            # Add the image to the canvas
+        
+            self.image_id = self.canvas.create_image(0, 0, anchor=tk.CENTER, image=self.photo)
+
+        if not self.smallgui:
+            
+            # Initialize position and velocity
+            self.x_pos = self.root.winfo_screenwidth() // 2
+            self.y_pos = self.root.winfo_screenheight() // 2
+            self.x_velocity = random.uniform(-0.5, 0.5)  # Initial velocity for x
+            self.y_velocity = random.uniform(-0.5, 0.5)  # Initial velocity for y
+            self.radius = 100  # Radius to limit movement
+            self.center_x = self.x_pos
+            self.center_y = self.y_pos
+
+            # Physics parameters
+            self.friction = 0.98  # Simulate gradual slowing
+            self.acceleration = 0.01  # Gradual acceleration to change direction
+            self.min_velocity = 0.1  # Minimum velocity to prevent stopping
+        else:
+            self.x_pos = 100
+            self.y_pos = 100
+            self.center_x = 100
+            self.center_y = 100
+            new_image = Image.open(f"src/eyes/sleep.png").resize((200, 200), Image.Resampling.LANCZOS)
+            self.photo = ImageTk.PhotoImage(new_image)
+            self.canvas.itemconfig(self.image_id, image=self.photo)
+            self.force_blink()
+            image_x = 10  # Adjust X position
+            image_y = -5  # Adjust Y position
+    
+            self.image_id = self.canvas.create_image(image_x, image_y, anchor=tk.NW, image=self.photo)
+                
 
         # Additional UI elements
         self.loading_throbber = None
         self.text_output = None
         self.waiting_image_id = None
 
-        # Start the animation
-        self.animate()
+
+        if not self.smallgui:
+            # Start the animation
+            self.animate()
 
         # Start the API monitoring thread
         self.monitor_api()
 
         # Bind escape key to exit full screen
         self.root.bind('<Escape>', lambda e: self.root.destroy())
+
+    def force_blink(self):
+        global sleep, blink_image, blinking, do_once, is_blink_active
+        
+        blink_image = "src/eyes/waiting/blink_waiting.png"
+       
+        if hasattr(api, 'emotion'):
+            try:
+                new_image_path = f"src/eyes/{api.emotion}.png"
+                waiting_eyes = f"src/eyes/waiting/{api.emotion}.png"
+            except FileNotFoundError:
+                 pass  # Ignore if the image doesn't exist
+        
+        # Generate a random duration between 2 and 10 seconds (converted to seconds)
+        
+        new_image = Image.open(blink_image).resize(image_size, Image.Resampling.LANCZOS)
+        self.photo = ImageTk.PhotoImage(new_image)
+        self.canvas.itemconfig(self.image_id, image=self.photo)
+                
+        time.sleep(random.uniform(0.1, 0.4))
+            
+        if self.api.waiting == True:
+            try:
+                new_image = Image.open(f"src/eyes/waiting/{api.emotion}.png").resize(image_size, Image.Resampling.LANCZOS)
+                self.photo = ImageTk.PhotoImage(new_image)
+                self.canvas.itemconfig(self.image_id, image=self.photo)
+                blink_image = "src/eyes/waiting/blink_waiting.png"
+            except FileNotFoundError:
+                pass  # Ignore if the image doesn't exist
+        else:
+            try:
+                new_image = Image.open(f"src/eyes/{api.emotion}.png").resize(image_size, Image.Resampling.LANCZOS)
+                self.photo = ImageTk.PhotoImage(new_image)
+                self.canvas.itemconfig(self.image_id, image=self.photo)
+                blink_image = "src/eyes/blink.png"
+            except FileNotFoundError:
+                pass  # Ignore if the image doesn't exist
 
     def blink_function(self):
         global sleep, blink_image, blinking, do_once, is_blink_active
@@ -123,7 +234,7 @@ class FloatingImageApp:
                 
         if sleep == True:
             print("Sleeping")
-            new_image = Image.open(f"src/eyes/sleep.png").resize((500, 500), Image.Resampling.LANCZOS)
+            new_image = Image.open(f"src/eyes/sleep.png").resize(image_size, Image.Resampling.LANCZOS)
             self.photo = ImageTk.PhotoImage(new_image)
             self.canvas.itemconfig(self.image_id, image=self.photo)
             return()
@@ -141,7 +252,7 @@ class FloatingImageApp:
         
             if sleep == True:
                 print("Sleeping")
-                new_image = Image.open(f"src/eyes/sleep.png").resize((500, 500), Image.Resampling.LANCZOS)
+                new_image = Image.open(f"src/eyes/sleep.png").resize(image_size, Image.Resampling.LANCZOS)
                 self.photo = ImageTk.PhotoImage(new_image)
                 self.canvas.itemconfig(self.image_id, image=self.photo)
                 return()
@@ -157,7 +268,7 @@ class FloatingImageApp:
                 time.sleep(1)  # Check every second if the timer is still active
         
             if is_blink_active:
-                new_image = Image.open(blink_image).resize((500, 500), Image.Resampling.LANCZOS)
+                new_image = Image.open(blink_image).resize(image_size, Image.Resampling.LANCZOS)
                 self.photo = ImageTk.PhotoImage(new_image)
                 self.canvas.itemconfig(self.image_id, image=self.photo)
             else:
@@ -167,7 +278,7 @@ class FloatingImageApp:
             
             if self.api.waiting == True:
                 try:
-                    new_image = Image.open(f"src/eyes/waiting/{api.emotion}.png").resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(f"src/eyes/waiting/{api.emotion}.png").resize(image_size, Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                     blink_image = "src/eyes/waiting/blink_waiting.png"
@@ -175,7 +286,7 @@ class FloatingImageApp:
                     pass  # Ignore if the image doesn't exist
             else:
                 try:
-                    new_image = Image.open(f"src/eyes/{api.emotion}.png").resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(f"src/eyes/{api.emotion}.png").resize(image_size, Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                     blink_image = "src/eyes/blink.png"
@@ -310,7 +421,7 @@ class FloatingImageApp:
         if (current_time >= start_night or current_time <= end_night):
             sleep = True
             new_image_path = f"src/eyes/sleep.png"
-            new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+            new_image = Image.open(new_image_path).resize(image_size, Image.Resampling.LANCZOS)
             self.photo = ImageTk.PhotoImage(new_image)
             self.canvas.itemconfig(self.image_id, image=self.photo)
         else:
@@ -363,7 +474,7 @@ class FloatingImageApp:
                 try:
                     new_image_path = f"src/eyes/{api.emotion}.png"
                     waiting_eyes = f"src/eyes/waiting/{api.emotion}.png"
-                    new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(new_image_path).resize(image_size, Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                 except FileNotFoundError:
@@ -385,7 +496,7 @@ class FloatingImageApp:
 
             if self.api.waiting == True:
                 try:
-                    new_image = Image.open(waiting_eyes).resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(waiting_eyes).resize(image_size, Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                     blink_image = "src/eyes/waiting/blink_waiting.png"
