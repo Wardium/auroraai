@@ -14,7 +14,9 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 - **Audio Playback**: Plays audio files or text-to-speech output using `pygame` and `pydub`.  
 - **Simplified Conversations**: Reduces large conversation histories to their key points.  
 - **Timed Events**: Implements random timed events for specific scenarios.  
-- **Colorized CLI**: Enhances terminal output with `colorama` for better readability.  
+- **Colorized CLI**: Enhances terminal output with `colorama` for better readability.
+- **Small GUI**: BETA, small UI that doesn't take up the screen!
+- **Hazi**: Custom Made Memory System, Good But Forgets Over Time
 
 ---
 
