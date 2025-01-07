@@ -68,6 +68,7 @@ personality = settings.personality_text + (
 
 # Configure the Gemini AI API
 api_key = settings.api  # Replace with your actual API key
+
 def configure_gemini():
     genai.configure(api_key=api_key)
     return genai.GenerativeModel("gemini-1.5-flash"), genai.GenerativeModel("gemini-1.5-flash")
@@ -514,6 +515,8 @@ def save_conversation_to_file(conversation_history):
             log_file.write(simplified)
             print(Fore.RED + "Conversation Ended." + Style.RESET_ALL)
             print(Fore.LIGHTBLACK_EX + f"Conversation saved to {log_file_path}" + Style.RESET_ALL)
+          
+    process_folder(f"./logs")
 
 def add_message_to_history(history, speaker, message):
     """
@@ -525,6 +528,45 @@ def add_message_to_history(history, speaker, message):
         return history + formatted_message + "\n \n"
     return history + formatted_message + "\n \n"
     
+def process_folder(folder_path):
+    """
+    Checks for exactly 5 text files in a folder. If found, combines their content into one string,
+    sends it to a Google Gemini AI model for processing, deletes the files, and saves the AI's response
+    into new files in the same folder.
+
+    Parameters:
+        folder_path (str): Path to the folder containing the files.
+        api_key (str): API key for Google Gemini AI.
+        model_id (str): ID of the model to use.
+    """
+    # Step 1: List all files in the folder
+    files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+    
+    # Check if there are exactly 5 files
+    if len(files) >= 5:
+        # Step 2: Read the contents of the files
+        combined_text = ""
+        for file in files:
+            with open(os.path.join(folder_path, file), 'r') as f:
+                combined_text += f.read() + "\n"  # Add a newline between file contents
+        
+        # Simplify the combined conversation history using your function
+        simplified_text = simplify_conversation(model, combined_text)
+
+        # Delete the original files
+        for file in files:
+            os.remove(os.path.join(folder_path, file))
+
+        # Save the AI response into a new file with the current date and time
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        new_file_path = os.path.join(folder_path, f"{timestamp}_simplified.txt")
+        with open(new_file_path, 'w') as f:
+            f.write(simplified_text)
+        
+        print(Style.DIM + "Processing complete. AI response saved as new files." + Style.RESET_ALL)
+    else:
+        print(Style.DIM + f"Folder does not contain more than or 5 files. Current count: {len(files)}" + Style.RESET_ALL)
+
 def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
     # Check if the setting 'speak' is enabled
     if voice_text == "":
