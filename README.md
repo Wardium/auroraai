@@ -24,18 +24,19 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 ## Installation  
 
 - **Note:** This project requires, a **speaker**, **microphone**, and a **visual display**
-
-1. **Clone the Repository**:  
+    
+1. **Install Required Apps**:
+   
+   *Rust and Cargo: https://rustup.rs/*
+   
+3. **Clone the Repository**:  
    ```bash
    git clone https://github.com/yourusername/aurora-ai.git
    cd aurora-ai
-2. **Install Requirements**:
+4. **Install Requirements**:
    ```bash
    pip install -U google-generative-ai
    pip install -r requirements.txt
-3. **Install Required Apps**:
-   
-   Rust and Cargo: https://rustup.rs/
 
 ---
 
