@@ -33,6 +33,9 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
    ```bash
    pip install -U google-generative-ai
    pip install -r requirements.txt
+3. **Install Required Apps**:
+   
+   Rust and Cargo: https://rustup.rs/
 
 ---
 
