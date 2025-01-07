@@ -9,6 +9,7 @@ import importlib
 import api
 import subprocess
 from datetime import datetime
+import colorama
 
 sleep_timer = False
 blinking = False
@@ -102,7 +103,9 @@ class FloatingImageApp:
         blink_image = "src/eyes/waiting/blink_waiting.png"
         
         if sleep == True:
+            print("Sleeping")
             return()
+        print(f"Sleep: {sleep}")
         
         if blinking == True:
             return()
@@ -118,6 +121,11 @@ class FloatingImageApp:
             except FileNotFoundError:
                 pass  # Ignore if the image doesn't exist
                 
+        if sleep == True:
+            print("Sleeping")
+            return()
+        print(Style.DIM + f"Sleep: {sleep}")
+                
                 
         if hasattr(api, 'emotion'):
             try:
@@ -127,6 +135,12 @@ class FloatingImageApp:
                 pass  # Ignore if the image doesn't exist
         
         while is_blink_active:
+        
+            if sleep == True:
+                print("Sleeping")
+                return()
+            print(f"Sleep: {sleep}")
+            
             blinking = True
             # Generate a random duration between 2 and 10 seconds (converted to seconds)
             duration = random.randint(2, 10)
@@ -184,7 +198,7 @@ class FloatingImageApp:
 
         while is_timer_active:
             # Generate a random duration between 5 and 30 minutes (converted to seconds)
-            duration = random.randint(100, 300)
+            duration = random.randint(60, 120)
             print(f"Timer started for {duration // 60} minutes.")
 
             # Wait for the duration or until the timer is deactivated
@@ -283,6 +297,7 @@ class FloatingImageApp:
                 print("Timer has been stopped and reset.")
 
     def sleep(self):
+        global sleep
         start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
         end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
 
