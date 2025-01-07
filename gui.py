@@ -123,8 +123,7 @@ class FloatingImageApp:
                 
         if sleep == True:
             print("Sleeping")
-            new_image_path = f"src/eyes/sleep.png"
-            new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+            new_image = Image.open(f"src/eyes/sleep.png").resize((500, 500), Image.Resampling.LANCZOS)
             self.photo = ImageTk.PhotoImage(new_image)
             self.canvas.itemconfig(self.image_id, image=self.photo)
             return()
@@ -142,7 +141,7 @@ class FloatingImageApp:
         
             if sleep == True:
                 print("Sleeping")
-                new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+                new_image = Image.open(f"src/eyes/sleep.png").resize((500, 500), Image.Resampling.LANCZOS)
                 self.photo = ImageTk.PhotoImage(new_image)
                 self.canvas.itemconfig(self.image_id, image=self.photo)
                 return()
