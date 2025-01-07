@@ -46,7 +46,6 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 
 - Music Player
 - Timer
-- Auto Log Deletion
 - Better Voice
 - Completely Locally Ran Mode
 - Interupt Detection
