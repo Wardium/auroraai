@@ -27,7 +27,7 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
     
 1. **Install Required Apps**:
    
-   *FFMPEG: https://www.ffmpeg.org*
+   *FFmpeg: https://www.ffmpeg.org*
    
    
 3. **Clone the Repository**:  
