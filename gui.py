@@ -12,7 +12,7 @@ from datetime import datetime
 import colorama
 import settings
 
-image_size = (500, 500)
+image_size = (200, 200)
 smallgui = settings.small_gui
 sleep_timer = False
 blinking = False
@@ -505,7 +505,7 @@ class FloatingImageApp:
                     pass  # Ignore if the image doesn't exist
             else:
                 try:
-                    new_image = Image.open(new_image_path).resize((500, 500), Image.Resampling.LANCZOS)
+                    new_image = Image.open(new_image_path).resize(image_size, Image.Resampling.LANCZOS)
                     self.photo = ImageTk.PhotoImage(new_image)
                     self.canvas.itemconfig(self.image_id, image=self.photo)
                     blink_image = "src/eyes/blink.png"
