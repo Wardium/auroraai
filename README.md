@@ -31,11 +31,10 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
    
 3. **Clone the Repository**:  
    ```bash
-   git clone https://github.com/yourusername/aurora-ai.git
+   git clone https://github.com/<yourusername>/aurora-ai.git
    cd aurora-ai
 4. **Install Requirements**:
    ```bash
-   pip install -U google-generative-ai
    pip install -r requirements.txt
 
 ---
