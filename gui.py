@@ -1,5 +1,5 @@
 import tkinter as tk
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageTk
 import random
 import math
 import threading
@@ -37,6 +37,25 @@ set_image_size(smallgui)
 
 print(f"{image_size}")
 
+def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
+    """Draw a rounded rectangle on the canvas."""
+    points = [
+        x1 + radius, y1,
+        x2 - radius, y1,
+        x2, y1,
+        x2, y1 + radius,
+        x2, y2 - radius,
+        x2, y2,
+        x2 - radius, y2,
+        x1 + radius, y2,
+        x1, y2,
+        x1, y2 - radius,
+        x1, y1 + radius,
+        x1, y1,
+    ]
+    return canvas.create_polygon(points, smooth=True, **kwargs)
+
+
 class FloatingImageApp:
     
     def fade_in(self):
@@ -65,20 +84,15 @@ class FloatingImageApp:
         
         if self.smallgui:
             self.root.wm_attributes("-topmost", 1)
-            self.root.geometry("200x200+0+-50")  # Small window in the top-left corner
+            self.root.geometry("200x200+10+-20")  # Small window in the top-left corner
             self.root.attributes('-alpha', 0.0)  # Fully transparent background
             self.root.overrideredirect(True)  # Remove window title bar and borders
-            self.root.wm_attributes('-transparentcolor', 'black')  # Set transparency color to white
+            self.root.wm_attributes('-transparentcolor', 'gray')  # Set transparency color to black
             
             # Disable interactions (unclickable)
             self.root.bind("<Button-1>", lambda e: "break")  # Disable mouse click
             self.fade_in()
-
-
-
-
-
-
+            
         else:
             # Fullscreen mode for normal behavior
             self.root.attributes('-fullscreen', True)
@@ -117,13 +131,63 @@ class FloatingImageApp:
             self.image = Image.open(self.image_path).resize((200, 200), Image.Resampling.LANCZOS)
             self.photo = ImageTk.PhotoImage(self.image)
 
-            # Create a canvas to hold the image
-            self.canvas = tk.Canvas(root, bg='black', highlightthickness=0)
+            # Create the transparent background image
+            canvas_width, canvas_height = 200, 200
+            padding = 10
+            radius = 40
+
+            # Create a blank RGBA image
+            bg_image = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(bg_image)
+
+            # Draw the main rectangle
+            draw.rectangle(
+                [padding, padding, canvas_width - padding, canvas_height - padding - radius],
+                fill=(0, 0, 0, 256)
+            )
+
+            # Draw left bottom corner
+            draw.pieslice(
+                [padding, canvas_height - padding - 2 * radius, padding + 2 * radius, canvas_height - padding],
+                start=90, end=180, fill=(0, 0, 0, 256)
+            )
+
+            # Draw right bottom corner
+            draw.pieslice(
+                [canvas_width - padding - 2 * radius, canvas_height - padding - 2 * radius, canvas_width - padding, canvas_height - padding],
+                start=0, end=90, fill=(0, 0, 0, 256)
+            )
+
+            # Draw connecting bottom rectangle
+            draw.rectangle(
+                [padding + radius, canvas_height - padding - radius, canvas_width - padding - radius, canvas_height - padding],
+                fill=(0, 0, 0, 256)
+            )
+
+            # Convert to a PhotoImage
+            bg_photo = ImageTk.PhotoImage(bg_image)
+
+            # Create the canvas
+            self.canvas = tk.Canvas(self.root, width=canvas_width, height=canvas_height, highlightthickness=0, bg="gray")
             self.canvas.pack(fill=tk.BOTH, expand=True)
 
             # Add the image to the canvas
-        
-            self.image_id = self.canvas.create_image(0, 0, anchor=tk.CENTER, image=self.photo)
+            self.bg_image_id = self.canvas.create_image(
+                0, 0,
+                anchor=tk.NW,
+                image=bg_photo
+            )
+
+            # Add the eyes image to the canvas
+            self.image_id = self.canvas.create_image(
+                canvas_width // 2, canvas_height // 2 + 500,
+                anchor=tk.CENTER,
+                image=self.photo
+            )
+
+            # Keep a reference to prevent garbage collection
+            self.bg_photo = bg_photo
+            self.photo = self.photo
 
         if not self.smallgui:
             
@@ -149,8 +213,8 @@ class FloatingImageApp:
             self.photo = ImageTk.PhotoImage(new_image)
             self.canvas.itemconfig(self.image_id, image=self.photo)
             self.force_blink()
-            image_x = 10  # Adjust X position
-            image_y = -5  # Adjust Y position
+            image_x = 0  # Adjust X position
+            image_y = -40  # Adjust Y position
     
             self.image_id = self.canvas.create_image(image_x, image_y, anchor=tk.NW, image=self.photo)
                 
@@ -216,7 +280,6 @@ class FloatingImageApp:
         if sleep == True:
             print("Sleeping")
             return()
-        print(f"Sleep: {sleep}")
         
         if blinking == True:
             return()
@@ -238,7 +301,6 @@ class FloatingImageApp:
             self.photo = ImageTk.PhotoImage(new_image)
             self.canvas.itemconfig(self.image_id, image=self.photo)
             return()
-        print(Style.DIM + f"Sleep: {sleep}")
                 
                 
         if hasattr(api, 'emotion'):
@@ -256,7 +318,6 @@ class FloatingImageApp:
                 self.photo = ImageTk.PhotoImage(new_image)
                 self.canvas.itemconfig(self.image_id, image=self.photo)
                 return()
-            print(f"Sleep: {sleep}")
             
             blinking = True
             # Generate a random duration between 2 and 10 seconds (converted to seconds)
