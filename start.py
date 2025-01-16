@@ -1,3 +1,5 @@
+import psutil
+import sys
 import threading
 import subprocess
 import os
@@ -31,8 +33,28 @@ def esc_listener():
     # Listen for Escape key to terminate processes
     keyboard.wait("esc")  # Block until 'esc' key is pressed
     print(Fore.RED + "Escape key pressed! Terminating Aurora..." + Style.RESET_ALL)
+    terminate_python_script("musicplayer.py")
     terminate_processes()  # Stop all subprocesses safely
     os._exit(0)  # Exit the main script immediately
+
+def terminate_python_script(script_name):
+    for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline']):
+        try:
+            # Check if the process is python or py (Python launcher) and look for the script name in the command line
+            if 'python' in proc.info['name'].lower() or 'py' in proc.info['name'].lower():
+                # Join the command line arguments and check if the script is part of it
+                cmdline = ' '.join(proc.info['cmdline'])
+                if script_name.lower() in cmdline.lower():  # Case insensitive match
+                    print(f"Terminating process: {cmdline}")
+                    proc.terminate()  # Terminate the process
+                    proc.wait()  # Wait for process to terminate
+                    print(Fore.RED + f"{script_name} has been terminated." + Style.RESET_ALL)
+                    return
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass  # Handle permission issues or processes that have been terminated already
+    
+    print(Fore.RED + f"{script_name} is not running." + Style.RESET_ALL)
+
 
 if __name__ == "__main__":
     try:
@@ -55,5 +77,7 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print(Fore.RED + "Interrupt received. Terminating Aurora..." + Style.RESET_ALL)
+        terminate_python_script("musicplayer.py")
+        time.sleep(5)
         terminate_processes()  # Stop all subprocesses safely
         print(Fore.RED + "All subprocesses terminated. Exiting Aurora." + Style.RESET_ALL)
