@@ -10,3 +10,4 @@ pydub>=0.25.1
 pillow>=11.0.0
 keyboard>=0.13.5
 cargo>=0.3
+psutil>=6.1.1
