@@ -35,8 +35,12 @@ from pydub import AudioSegment
 from pydub.playback import play
 import api
 import importlib
+import musicplayer
+from musicplayer import music_player
+from difflib import get_close_matches
 
 
+music_files = ""
 random_talk = False
 current_time = datetime.now().time()
 is_timer_active = False
@@ -64,6 +68,7 @@ personality = settings.personality_text + (
         "14. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
         "15. NEVER use quotation marks or astrisks"
         "16. between the times 8:00 PM, and 7:00 AM, you are sleeping, you still respond but act like you were woken up"
+        "17. If you assume the user is wanting you to play music (eg. aurora play <song>). Respond with '@play <song name>'. if the user asks for a random song just put '@play random'."
     )
 
 # Configure the Gemini AI API
@@ -372,6 +377,19 @@ def get_input():
         reply = input("Enter Message: ")
     return(reply)
 
+def threaded_process_and_play(input_text):
+    """
+    Runs the process_and_play function in a separate thread.
+
+    Args:
+    - input_text (str): The input text to process and play music for.
+    """
+    thread = threading.Thread(target=process_and_play, args=(input_text,))
+    thread.start()
+
+def remove_play_and_before(input_text):
+    return re.sub(r'@play.*', '', input_text).strip()
+
 # Conversation Loop
 def conversation_loop():
             
@@ -417,6 +435,7 @@ def conversation_loop():
         conversation_history = add_message_to_history(conversation_history, "User", user_input)
         output = get_response(conversation_history, model)
         output = re.sub(r"AI:\s*", "", output)
+        
         if "@e_sad" in output.lower():
             emotion = "sad"
             write_to_api("emotion", emotion)
@@ -445,7 +464,7 @@ def conversation_loop():
 
         if api.response == "no":
             write_to_api("response", "yes")
-
+    
         if "@END" in output:
             lasttime = datetime.now().strftime("[%Y-%m-%d %H:%M:%S],")
             output = re.sub(r"[\(\[].*?[\)\]]", "", output)
@@ -457,6 +476,8 @@ def conversation_loop():
             output = re.sub('@E_SCARED', '', output)
             output = re.sub('@END', '', output)
             #Print AI's response because it needds to be printed!
+            threaded_process_and_play(output)
+            output = remove_play_and_before(output)
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
             write_to_api("output", output)
@@ -473,6 +494,7 @@ def conversation_loop():
             write_to_api("finished", True)
             return()
             
+            
         if api.finished == False:
             #Set up removing date and stuff from the AI
             lasttime = datetime.now().strftime("[%Y-%m-%d %H:%M:%S],")
@@ -485,6 +507,8 @@ def conversation_loop():
             output = re.sub('@E_SCARED', '', output)
             output = re.sub('@END', '', output)
             #Print AI's response because it needs to be printed!
+            threaded_process_and_play(output)
+            output = remove_play_and_before(output)
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
             output = re.sub(r'\band\b|\*', '', output)
@@ -567,6 +591,36 @@ def process_folder(folder_path):
     else:
         print(Style.DIM + f"Folder does not contain more than or 5 files. Current count: {len(files)}" + Style.RESET_ALL)
 
+def gemini_api(gem_input):
+    """
+    Simplifies a conversation history using Gemini AI, extracting key information.
+
+    Args:
+    - name (str): The input text to process.
+
+    Returns:
+    - str: The AI-simplified version of the file name.
+    """
+    music_folder = "./music"
+    music_files = [file for file in os.listdir(music_folder) if os.path.isfile(os.path.join(music_folder, file))]
+    
+    gem_prompt = (
+        "for the following use the input text and compare it to the file names text. please respond only with the name of the file in full. (for example: Input: Cool, File Names: cool.mp3, Return: cool.mp3). "
+        "Input: " + gem_input + " " + "File Names: " + str(music_files)
+    )
+    print(gem_prompt)
+    genai.configure(api_key=settings.api)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    gem_return = model.generate_content(gem_prompt)
+    
+        # Ensure the response is processed as text
+    if isinstance(gem_return, str):
+        return gem_return.strip()
+    elif hasattr(gem_return, "text"):
+        return gem_return.text.strip()
+    else:
+        raise TypeError("Unexpected response type from Gemini API")
+        
 def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
     # Check if the setting 'speak' is enabled
     if voice_text == "":
@@ -605,6 +659,46 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
         os.remove(audio_file)  # Retry deleting the file
     
     write_to_api("output", "")
+
+def process_and_play(input_text):
+    if '@play' not in input_text:
+        return  # Exit if '@play' is not in the input
+    
+    time.sleep(3)
+
+    # Remove everything before and including '@play'
+    formatted_input = re.sub(r'.*?@play', '', input_text).strip()
+
+    # Get a list of all files in the './music' directory
+    music_folder = "./music"
+    try:
+        music_files = [file for file in os.listdir(music_folder) if os.path.isfile(os.path.join(music_folder, file))]
+    except FileNotFoundError:
+        print("Error: Music folder not found.")
+        return
+
+    if not music_files:
+        print("No music files found in the folder.")
+        return
+
+    # Use the Gemini API to process the input
+    ai_processed_input = gemini_api(formatted_input)
+    print(ai_processed_input)
+    print(music_files)
+
+    # Find the closest matching file name
+    closest_match = get_close_matches(ai_processed_input, music_files, n=1)
+    if not closest_match:
+        print("No close match found for the input.")
+        return
+
+    # Format the matched file name to include the folder path
+    matched_file_path = os.path.join(music_folder, closest_match[0])
+
+    # Pass the matched file to the music_player function
+    music_player(matched_file_path)
+
+
 # Main Execution
 if __name__ == "__main__":
     check_and_run('settings.py', 'config.py')  # Ensure settings.py exists
