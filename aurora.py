@@ -49,6 +49,8 @@ emotion = ""
 GUI = False
 output = ""
 send = False
+music_thread_running = False
+stop_event = threading.Event()
 
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
@@ -366,6 +368,9 @@ def get_all_words_from_files_in_folder(folder_path):
 def send_output(text):
     send = True
 
+def stop_thread():
+    stop_event.set()  # Set the event to signal the thread to stop
+
 def get_input():
     if GUI == True:
         while (visual.send == False):
@@ -378,12 +383,21 @@ def get_input():
     return(reply)
 
 def threaded_process_and_play(input_text):
+    global music_thread_running
     """
     Runs the process_and_play function in a separate thread.
 
     Args:
     - input_text (str): The input text to process and play music for.
     """
+    stop_event.clear()
+    
+    if music_thread_running:
+        stop_thread()
+        thread = threading.Thread(target=process_and_play, args=(input_text,))
+        thread.start()
+    
+    music_thread_running = True
     thread = threading.Thread(target=process_and_play, args=(input_text,))
     thread.start()
 
