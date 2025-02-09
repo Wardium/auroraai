@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+import subprocess
 
 def save_to_file(data):
     with open("settings.py", "w") as file:
@@ -94,4 +95,5 @@ tk.Button(button_frame, text="Submit", command=submit).grid(row=0, column=0, pad
 tk.Button(button_frame, text="Clear", command=clear).grid(row=0, column=1, padx=10)
 
 # Run the main loop
+subprocess.run(["python", "install.py"], check=True)
 root.mainloop()
