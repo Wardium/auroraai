@@ -9,6 +9,7 @@ import shutil
 import sys
 import pythoncom
 
+#Checking system platform and if the settings are set.
 if platform.system() == "Windows":
     import win32gui
     import win32process
@@ -58,6 +59,7 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 import mimetypes
 import pyperclip
+import PIL.ImageGrab
 
 #All the global variables for the program!
 pygame.mixer.init()
@@ -76,25 +78,47 @@ talking = False
 music = pygame.mixer.Sound(f"music/Funky World.mp3")
 musicchannel = pygame.mixer.Channel(2)
 startedmusic = False
-
+send_image = False
+current_app = ""
+last_app = "Unknown"
+app_call = False
+send_image = False
+image = ""
+Convert = False
 
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
+        "\n"
         "1. The Users name is: " + settings.name + ". "
+        "\n"
         "2. if the user responds with 'no reply' it indicates they did not say anything, end the coversation if you don't receive a response."
+        "\n"
         "3. Use the last emotion in history to set your current emotion, this may not be the same as your set presonality."
+        "\n"
         "4. your name is aurora, you are a fully scentient robot that looks mostly humanoid with some now humanoid parts."
+        "\n"
         "5. never prefix your response with AI:"
+        "\n"
         "6. If the conversation ends, finish your reply with '@END'. if asked to shut down. reply only with '@shutdown'"
+        "\n"
         "7. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' '@E_BORED' '@E_JUDGEMENTAL' without anything around it."
+        "\n"
         "8. all messages in history and response has a time, use this to get proper time between respones and act accordingly."
-        "9. if prompted with @RANDOM: respond with a conversation starter, you started the coversation with the user."
+        "\n"
+        "9. if user prompt includes '@RANDOM': you started the conversation, the user has said nothing. the prompt may include the reason. respond with a conversation starter like: 'what are you doing?', 'what's that you're doing?', 'why are you doing that?','how are you doing?'"
+        "\n"
         "10. Never talk for the user"
+        "\n"
         "11. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
+        "\n"
         "12. NEVER use quotation marks or astrisks"
+        "\n"
         "13. between the times 8:00 PM, and 7:00 AM, you are sleeping, you still respond but act like you were woken up"
+        "\n"
         "14. If you assume the user is wanting you to play music (eg. aurora play <song>). Respond with '@play <song name>'. if the user asks for a random song just put '@play random'."
+        "\n"
         "15. If the user is asking to stop, pause, unpause music, respond with @stop, @pause, @unpause at the end of your message accordingly (ex. User:'Stop Music' Response:'Alright! @stop'"
+        "\n"
         "16. If the user asks something relating to: sort, convert, or timer. respond with @sort, @convert, @timer <time (seconds)>. (ex. user:'sort these files' Response:'@sort', user:'convert this' response:'@convert', user:'make a timer for 40 seconds' response:'@timer 40'."
     )
 
@@ -104,6 +128,10 @@ api_key = settings.api  # Replace with your actual API key
 def configure_gemini():
     genai.configure(api_key=api_key)
     return genai.GenerativeModel("gemini-1.5-flash"), genai.GenerativeModel("gemini-1.5-flash")
+
+def fast_configure_gemini():
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel("gemini-1.5-flash-8b"), genai.GenerativeModel("gemini-1.5-flash-8b")
 
 model, end_detection_model = configure_gemini()
 
@@ -201,11 +229,20 @@ def choose_input_mode():
     
 # Gemini AI Interaction
 def get_response(history, model):
+    global send_image, image
+
     """Sends the conversation history to Gemini AI and returns the response."""
     write_to_api("waiting_for_response", "yes")
     try:
         write_to_api("processing", True)
-        response = model.generate_content(history)
+        if send_image == True:
+            send_image = False
+            print("Image Mode")
+            prompt = history + " Explain The Following Image:"
+            response = model.generate_content(  
+                contents=[prompt, image])
+        else:
+            response = model.generate_content(history)
         write_to_api("waiting_for_response", "no")
         write_to_api("processing", False)
         return response.text.strip()  # Ensure clean response
@@ -213,6 +250,18 @@ def get_response(history, model):
         write_to_api("waiting_for_response", "no")
         write_to_api("processing", False)
         return f"An error occurred: {e}"
+
+def custom_gem(user_input, c_model):
+    """Sends user input to the Gemini API and returns the response."""
+    prompt_template = (user_input)
+
+    # Use the AI model to simplify the message
+    simplified_message = model.generate_content(prompt_template)
+    
+    simplified_text = simplified_message.text.strip()
+    cleaned_text = re.sub('@NONE', '', simplified_text)
+    
+    return cleaned_text
 
 def check_end_of_conversation(user_input, end_detection_model):
     """Sends user input to the end detection model and checks if it's ending the conversation."""
@@ -228,6 +277,8 @@ def check_end_of_conversation(user_input, end_detection_model):
 def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
     """Listens for a specific wake word or allows user to type input depending on the interaction mode."""
     
+    global current_app, last_app, app_call
+    
     recognizer = sr.Recognizer()
     write_to_api("waiting", True)
     start_timer()
@@ -242,6 +293,22 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
         with sr.Microphone() as source:
             while True:
                 try:
+                
+                    start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
+                    end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
+                    if (current_time >= start_night or current_time <= end_night):
+                        Continue
+                    else:
+                        if current_app != get_focused_app():
+                            print(Fore.LIGHTBLACK_EX + f"App: {get_focused_app()}" + Style.RESET_ALL)
+                            current_app = get_focused_app()
+                            ai_prompt = f"Is this application currently focused considers important? (say if they were playing a game, or browsing the web, or using not normal software used on a computer. not things like teminals or file viewers. (eg. explorer.exe)). only respond with 'yes' or 'no'. New Application Focused: {current_app} Old Application: {last_app}"
+                            decision = custom_gem(ai_prompt, fast_configure_gemini())
+                            last_app = current_app
+                            if decision == "yes":
+                                print(Fore.LIGHTBLACK_EX + f"App Call" + Style.RESET_ALL)
+                                app_call = True
+                                return f""
                 
                     importlib.reload(api)
                     
@@ -408,9 +475,21 @@ def sort_active_folder():
             print(f"Sorting files in: {folder_path}")
             sort_files(folder_path)
 
+def check_send_image(input):
+    global send_image, image
+    
+    ai_prompt = f"Is this message have any implication that they would like you to see the screen or equivilent? (ex: 'Look at this' 'what's this' 'do you see this'). respond only with 'yes' or 'no': {input}'"
+    decision = custom_gem(ai_prompt, fast_configure_gemini())
+    if decision == "yes":
+        screenshot = PIL.ImageGrab.grab()
+        image = screenshot
+        send_image = True
+        print("Starting Image Mode...")
+        return()
+
 # Voice Input Handling
 def get_voice_input():
-    global startedmusic
+    global startedmusic, app_call
 
     if startedmusic == True:
         startedmusic = False
@@ -423,6 +502,11 @@ def get_voice_input():
     with sr.Microphone() as source:
         set_music(0.3)
         print(Fore.YELLOW + "Listening..." + Style.RESET_ALL)
+        
+        if app_call == True:
+            app_call = False
+            return f"@RANDOM (User is now using {current_app})"
+        
         try:
             if startedmusic == True:
                 startedmusic = False
@@ -479,7 +563,7 @@ def get_all_words_from_files_in_folder(folder_path):
             if os.path.isfile(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as file:
-                        content = "[PAST HISTORY: " + file.read() +" END OF HISTORY] \n \n \n"
+                        content = file.read()
                         all_text.append(content)
                 except Exception as e:
                     print(Fore.LIGHTBLACK_EX + f"Error reading file '{file_path}': {e}" + Style.RESET_ALL)
@@ -559,7 +643,7 @@ def get_focused_app():
 
 # Conversation Loop
 def conversation_loop():
-    global startedmusic
+    global startedmusic, send_image
             
     write_to_api("finished", False)
     write_to_api("output", "")
@@ -567,7 +651,7 @@ def conversation_loop():
     
 
     lasttime = "never"
-    conversation_history = get_all_words_from_files_in_folder("logs") + "\n" + personality + "\n" + "\n"
+    conversation_history = "(History: " + get_all_words_from_files_in_folder("logs") + ")" + "\n" + "\n" + "(Personality: " + personality + ")" + "\n" + "\n"
     write_to_api("waiting_for_input", "yes")
     
     while True:
@@ -590,10 +674,12 @@ def conversation_loop():
             
         print(Fore.BLUE + user_input + Style.RESET_ALL)
         
+        check_send_image(user_input)
+        
         if user_input == "@skip":
             return()
             
-        user_input = "[AI LAST MESSAGE: " + lasttime + " CURRENT TIME: " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S]]") + user_input
+        user_input = user_input
         
         importlib.reload(api)
         if api.random_talk == True:
@@ -844,7 +930,7 @@ def extract_numbers(text):
 
 #What starts the commands
 def process_and_play(input_text):
-    global startedmusic
+    global startedmusic, Convert
        
     if '@pause' in input_text:
         pause_music()
@@ -878,6 +964,7 @@ def process_and_play(input_text):
             while pygame.mixer.music.get_busy():  # Check if the audio is still playing
                 pygame.time.Clock().tick(5)
         time.sleep(3)
+        Convert = True
         monitor_clipboard()
         return
         
@@ -1007,6 +1094,9 @@ def get_alternate_extension(ext):
     return conversion_map.get(ext.lower(), None)
 
 def convert_file(file_path):
+    global Convert 
+    
+    Convert = False
     """Determine file type and convert accordingly."""
     if not file_path or not os.path.exists(file_path):
         print("No valid file detected. Copy a file and try again.")
@@ -1048,12 +1138,14 @@ def convert_file(file_path):
         print(f"Unsupported file format: {mime_type}")
 
 def monitor_clipboard():
+
+    global Convert
     """Wait for the user to copy a file, then convert it."""
     print("Copy a file to convert it. Press Ctrl+C to stop.")
 
     last_clipboard = None
 
-    while True:
+    while Convert == True:
         try:
             copied_file = get_clipboard_file()
 
