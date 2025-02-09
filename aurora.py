@@ -2,6 +2,21 @@ import colorama
 from colorama import just_fix_windows_console
 just_fix_windows_console()
 from colorama import Fore, Style
+import psutil
+import time
+import platform
+import shutil
+import sys
+import pythoncom
+
+if platform.system() == "Windows":
+    import win32gui
+    import win32process
+    import win32com.client  # Add this line
+elif platform.system() == "Darwin":  # macOS
+    from AppKit import NSWorkspace
+elif platform.system() == "Linux":
+    import subprocess
 
 def check_and_run(file_name, script_to_run):
     # Check if the file exists in the current directory
@@ -16,7 +31,10 @@ def check_and_run(file_name, script_to_run):
     else:
         print(Fore.LIGHTBLACK_EX + f"{file_name} exists." + Style.RESET_ALL)
 
+
+#Imports after making sure the program is possible to run.
 import threading
+import tkinter as tk
 import random
 import google.generativeai as genai
 import colorama
@@ -30,16 +48,19 @@ import subprocess
 import sys
 check_and_run('settings.py', 'config.py')
 import settings
-import time
 from pydub import AudioSegment
 from pydub.playback import play
 import api
 import importlib
-import musicplayer
-from musicplayer import music_player
 from difflib import get_close_matches
+import tkinter as tk
+from tkinter import messagebox
+from PIL import Image, ImageTk
+import mimetypes
+import pyperclip
 
-
+#All the global variables for the program!
+pygame.mixer.init()
 music_files = ""
 random_talk = False
 current_time = datetime.now().time()
@@ -51,26 +72,30 @@ output = ""
 send = False
 music_thread_running = False
 stop_event = threading.Event()
+talking = False
+music = pygame.mixer.Sound(f"music/Funky World.mp3")
+musicchannel = pygame.mixer.Channel(2)
+startedmusic = False
+
 
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
         "1. The Users name is: " + settings.name + ". "
         "2. if the user responds with 'no reply' it indicates they did not say anything, end the coversation if you don't receive a response."
-        "3. Use the last emotion in hostory to set your current emotion, this may not be the same as your set presonality."
-        "4. never immediatly end a coversation."
-        "5. you will be given your entire history, please do not bring it up in conversation unless prompted or required to for accuracy."
-        "6. your name is aurora, you are a fully scentient robot that looks mostly humanoid with some now humanoid parts."
-        "7. never prefix your response with AI:"
-        "8. If the conversation ends, finish your reply with '@END'."
-        "9. every message will contain a date and time, this is for you to know when the message was sent, please do not call upon this in a response."
-        "10. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' '@E_BORED' '@E_JUDGEMENTAL' without anything around it."
-        "11. all messages in history and response has a time, use this to get proper time between respones and act accordingly."
-        "12. if prompted with @RANDOM: respond with a conversation starter, like you started the coversation with the user."
-        "13. Never talk for the user"
-        "14. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
-        "15. NEVER use quotation marks or astrisks"
-        "16. between the times 8:00 PM, and 7:00 AM, you are sleeping, you still respond but act like you were woken up"
-        "17. If you assume the user is wanting you to play music (eg. aurora play <song>). Respond with '@play <song name>'. if the user asks for a random song just put '@play random'."
+        "3. Use the last emotion in history to set your current emotion, this may not be the same as your set presonality."
+        "4. your name is aurora, you are a fully scentient robot that looks mostly humanoid with some now humanoid parts."
+        "5. never prefix your response with AI:"
+        "6. If the conversation ends, finish your reply with '@END'. if asked to shut down. reply only with '@shutdown'"
+        "7. at the start of the response always put your current emotion from these 6 choices '@E_SAD' '@E_HAPPY' '@E_MAD' '@E_NERVOUS' '@E_NEUTRAL' '@E_SCARED' '@E_BORED' '@E_JUDGEMENTAL' without anything around it."
+        "8. all messages in history and response has a time, use this to get proper time between respones and act accordingly."
+        "9. if prompted with @RANDOM: respond with a conversation starter, you started the coversation with the user."
+        "10. Never talk for the user"
+        "11. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
+        "12. NEVER use quotation marks or astrisks"
+        "13. between the times 8:00 PM, and 7:00 AM, you are sleeping, you still respond but act like you were woken up"
+        "14. If you assume the user is wanting you to play music (eg. aurora play <song>). Respond with '@play <song name>'. if the user asks for a random song just put '@play random'."
+        "15. If the user is asking to stop, pause, unpause music, respond with @stop, @pause, @unpause at the end of your message accordingly (ex. User:'Stop Music' Response:'Alright! @stop'"
+        "16. If the user asks something relating to: sort, convert, or timer. respond with @sort, @convert, @timer <time (seconds)>. (ex. user:'sort these files' Response:'@sort', user:'convert this' response:'@convert', user:'make a timer for 40 seconds' response:'@timer 40'."
     )
 
 # Configure the Gemini AI API
@@ -249,6 +274,14 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                 except Exception as e:
                     print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
 
+def countdown_timer(seconds):
+    for remaining in range(seconds, 0, -1):
+        sys.stdout.write(f"\rTime remaining: {remaining} seconds ")
+        sys.stdout.flush()
+        time.sleep(1)
+    print("\nTime's up!")
+    playsound("src/timer.mp3")
+
 def timer_function():
     global is_timer_active
 
@@ -297,35 +330,127 @@ def stop_timer():
         timer_thread.join()  # Wait for the thread to finish if necessary
         print(Fore.LIGHTBLACK_EX + "Timer has been stopped and reset." + Style.RESET_ALL)
 
+def get_focused_app():
+    """Returns the name of the currently focused/active program."""
+    try:
+        if platform.system() == "Windows":
+            hwnd = win32gui.GetForegroundWindow()
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            for process in psutil.process_iter(attrs=['pid', 'name']):
+                if process.info['pid'] == pid:
+                    return process.info['name']
+
+        elif platform.system() == "Darwin":  # macOS
+            active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            return active_app.localizedName() if active_app else None
+
+        elif platform.system() == "Linux":
+            result = subprocess.run(["xdotool", "getactivewindow", "getwindowpid"], capture_output=True, text=True)
+            if result.stdout.strip().isdigit():
+                pid = int(result.stdout.strip())
+                for process in psutil.process_iter(attrs=['pid', 'name']):
+                    if process.info['pid'] == pid:
+                        return process.info['name']
+
+    except Exception:
+        return None
+    return None
+
+def get_open_folder():
+    """Gets the currently open folder in the active file manager."""
+    if platform.system() == "Windows":
+        pythoncom.CoInitialize()
+        shell = win32com.client.Dispatch("Shell.Application")
+        for window in shell.Windows():
+            if window.Name == "File Explorer":
+                return window.Document.Folder.Self.Path
+    elif platform.system() == "Darwin":  # macOS
+        result = subprocess.run(
+            ["osascript", "-e", 'tell application "Finder" to get POSIX path of (target of window 1 as alias)'],
+            capture_output=True, text=True
+        )
+        return result.stdout.strip() if result.returncode == 0 else None
+    elif platform.system() == "Linux":
+        result = subprocess.run(["xdotool", "getactivewindow", "getwindowname"], capture_output=True, text=True)
+        return result.stdout.strip() if result.returncode == 0 else None
+    return None
+
+def sort_files(folder_path):
+    """Sorts files in a folder by their file extension."""
+    if not folder_path or not os.path.exists(folder_path):
+        print("No valid folder found!")
+        return
+
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+
+        if os.path.isdir(file_path):
+            continue
+
+        file_extension = filename.split(".")[-1].lower()
+        if not file_extension:
+            continue
+
+        target_folder = os.path.join(folder_path, file_extension)
+        os.makedirs(target_folder, exist_ok=True)
+        shutil.move(file_path, os.path.join(target_folder, filename))
+
+    print(f"Sorted files in: {folder_path}")
+
+def sort_active_folder():
+    """Sorts files in the currently active folder if a file manager is open."""
+    focused_app = get_focused_app()
+
+    # Only proceed if it's a file manager
+    if focused_app in ["explorer.exe", "Finder", "nemo", "nautilus", "dolphin"]:
+        folder_path = get_open_folder()
+        if folder_path:
+            print(f"Sorting files in: {folder_path}")
+            sort_files(folder_path)
+
 # Voice Input Handling
 def get_voice_input():
+    global startedmusic
+
+    if startedmusic == True:
+        startedmusic = False
+        return "@skip"
     write_to_api("response", "yes")
     write_to_api("finished", False)
     playsound("src/popon.mp3")
     """Captures voice input using the SpeechRecognition library."""
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
+        set_music(0.3)
         print(Fore.YELLOW + "Listening..." + Style.RESET_ALL)
         try:
+            if startedmusic == True:
+                startedmusic = False
+                return "@skip"
+                
             if api.random_talk == True:
                 return "@RANDOM"
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=150)
             print(Fore.CYAN + "Processing your input..." + Style.RESET_ALL)
             write_to_api("response", "yes")
             playsound("src/popoff.mp3")
+            set_music(1.0)
             return recognizer.recognize_google(audio)
         except sr.WaitTimeoutError:
             print(Fore.RED + "No input detected. Switching to wake word detection..." + Style.RESET_ALL)
             playsound("src/wait.mp3")
             write_to_api("response", "no")
+            set_music(1.0)
             return "no reply"
         except sr.UnknownValueError:
             print(Fore.RED + "Sorry, I couldn't understand you." + Style.RESET_ALL)
             write_to_api("response", "yes")
+            set_music(1.0)
             return ""
         except Exception as e:
             print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
             write_to_api("response", "yes")
+            set_music(1.0)
             return ""
 
 def get_all_words_from_files_in_folder(folder_path):
@@ -402,10 +527,39 @@ def threaded_process_and_play(input_text):
     thread.start()
 
 def remove_play_and_before(input_text):
-    return re.sub(r'@play.*', '', input_text).strip()
+    # Remove everything starting from @restart, @pause, @unpause, @stop, or @play
+    return re.sub(r'(@pause|@unpause|@stop|@play|@sort|@convert|@timer).*', '', input_text).strip()
+
+def get_focused_app():
+    """Returns the name of the currently focused/active program."""
+    try:
+        if platform.system() == "Windows":
+            hwnd = win32gui.GetForegroundWindow()  # Get active window handle
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)  # Get process ID
+            for process in psutil.process_iter(attrs=['pid', 'name']):
+                if process.info['pid'] == pid:
+                    return process.info['name']  # Return focused app name
+
+        elif platform.system() == "Darwin":  # macOS
+            active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            return active_app.localizedName() if active_app else None
+
+        elif platform.system() == "Linux":
+            result = subprocess.run(["xdotool", "getactivewindow", "getwindowpid"], capture_output=True, text=True)
+            if result.stdout.strip().isdigit():
+                pid = int(result.stdout.strip())
+                for process in psutil.process_iter(attrs=['pid', 'name']):
+                    if process.info['pid'] == pid:
+                        return process.info['name']
+
+    except Exception as e:
+        return None
+
+    return None
 
 # Conversation Loop
 def conversation_loop():
+    global startedmusic
             
     write_to_api("finished", False)
     write_to_api("output", "")
@@ -435,6 +589,9 @@ def conversation_loop():
             user_input = "no reply"  # Fallback in case of an unexpected error
             
         print(Fore.BLUE + user_input + Style.RESET_ALL)
+        
+        if user_input == "@skip":
+            return()
             
         user_input = "[AI LAST MESSAGE: " + lasttime + " CURRENT TIME: " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S]]") + user_input
         
@@ -490,7 +647,7 @@ def conversation_loop():
             output = re.sub('@E_SCARED', '', output)
             output = re.sub('@END', '', output)
             #Print AI's response because it needds to be printed!
-            threaded_process_and_play(output)
+            process_and_play(output)
             output = remove_play_and_before(output)
             print(Fore.GREEN + output + Style.RESET_ALL)
             print()
@@ -642,6 +799,7 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
     if not settings.speak:
         return  # Exit the function if speaking is disabled
     
+    talking = True
     # Generate speech with gTTS
     voice = gTTS(text=voice_text, lang="en", slow=False)
     audio_file = "voice.mp3"
@@ -654,16 +812,20 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
         sound.export(audio_file, format="mp3")  # Save the adjusted audio
 
     # Initialize pygame mixer to play audio
-    pygame.mixer.init()
-    pygame.mixer.music.load(audio_file)
-    pygame.mixer.music.play()   
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+        print("pygame.mixer initialized.")
+    set_music(0.3)
+    talkchannel = pygame.mixer.Channel(1)
+    words = pygame.mixer.Sound(audio_file)
+    talkchannel.play(words)
     
     # Wait until the audio finishes playing
-    while pygame.mixer.music.get_busy():  # Check if the audio is still playing
+    while talkchannel.get_busy():  # Check if the audio is still playing
         pygame.time.Clock().tick(5)
         
-    pygame.mixer.music.stop()  # Stop the music
-    pygame.mixer.quit()
+    talking = False
+    talkchannel.stop()  # Stop the music
         
     try:
         os.remove(audio_file)  # Delete the file
@@ -672,19 +834,88 @@ def make_voice(voice_text, rate=1.0):  # Added rate parameter (default is 1.0)
         time.sleep(1)  # Wait for a moment before retrying
         os.remove(audio_file)  # Retry deleting the file
     
+    set_music(1.0)
     write_to_api("output", "")
 
+def extract_numbers(text):
+    """Extracts numbers from a string and converts them to an integer."""
+    numbers = re.sub(r"\D", "", text)  # Remove everything except digits
+    return int(numbers) if numbers else 0  # Convert to int, default to 0 if empty
+
+#What starts the commands
 def process_and_play(input_text):
+    global startedmusic
+       
+    if '@pause' in input_text:
+        pause_music()
+        return
+    
+    if '@shutdown' in input_text:
+        sys.exit()
+        return
+    
+    if '@unpause' in input_text:
+        unpause_music()
+        return
+    
+    if '@stop' in input_text:
+        stop_music()
+        return
+        
+    if '@sort' in input_text:
+        sort_active_folder()
+        return
+        
+    if '@convert' in input_text:
+        time.sleep(1)
+        while talking == True:
+            pygame.time.Clock().tick(5)
+    
+        if settings.speak:
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)  # Check every 10 milliseconds
+            
+            while pygame.mixer.music.get_busy():  # Check if the audio is still playing
+                pygame.time.Clock().tick(5)
+        time.sleep(3)
+        monitor_clipboard()
+        return
+        
+    if '@timer' in input_text:
+        time.sleep(1)
+        while talking == True:
+            pygame.time.Clock().tick(5)
+    
+        if settings.speak:
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)  # Check every 10 milliseconds
+            
+            while pygame.mixer.music.get_busy():  # Check if the audio is still playing
+                pygame.time.Clock().tick(5)
+        
+        countdown_timer(extract_numbers(input_text))
+        return
+        
     if '@play' not in input_text:
         return  # Exit if '@play' is not in the input
+        
+        
+    time.sleep(1)
+    while talking == True:
+        pygame.time.Clock().tick(5)
     
-    time.sleep(3)
+    if settings.speak:
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)  # Check every 10 milliseconds
+        
+        while pygame.mixer.music.get_busy():  # Check if the audio is still playing
+            pygame.time.Clock().tick(5)
 
     # Remove everything before and including '@play'
     formatted_input = re.sub(r'.*?@play', '', input_text).strip()
 
     # Get a list of all files in the './music' directory
-    music_folder = "./music"
+    music_folder = "./music/"
     try:
         music_files = [file for file in os.listdir(music_folder) if os.path.isfile(os.path.join(music_folder, file))]
     except FileNotFoundError:
@@ -710,9 +941,137 @@ def process_and_play(input_text):
     matched_file_path = os.path.join(music_folder, closest_match[0])
 
     # Pass the matched file to the music_player function
-    music_player(matched_file_path)
+    play_music(matched_file_path)
+    startedmusic = True
 
+def play_music(file):
+    global musicchannel, music
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+        print("pygame.mixer initialized.")
+    if musicchannel.get_busy():
+        make_voice("Already Playing Music", rate=1.0)
+    else:
+        music = pygame.mixer.Sound(file)
+        musicchannel = pygame.mixer.Channel(2)
+        musicchannel.play(music)
+    
+def stop_music():
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+        print("pygame.mixer initialized.")
+    global musicchannel, music
+    musicchannel.fadeout(1000)
 
+def pause_music():
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+        print("pygame.mixer initialized.")
+    global musicchannel, music
+    musicchannel.pause()
+
+def unpause_music():
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+        print("pygame.mixer initialized.")
+    global musicchannel, music
+    musicchannel.unpause()
+
+def get_clipboard_file():
+    """Retrieve a file path from the clipboard."""
+    if platform.system() == "Windows":
+        import win32clipboard
+        win32clipboard.OpenClipboard()
+        try:
+            file_path = win32clipboard.GetClipboardData(win32clipboard.CF_HDROP)[0]
+        except TypeError:
+            file_path = None
+        finally:
+            win32clipboard.CloseClipboard()
+        return file_path
+    elif platform.system() == "Darwin":  # macOS
+        result = subprocess.run(["osascript", "-e", 'the clipboard as «class utf8»'], capture_output=True, text=True)
+        return result.stdout.strip()
+    elif platform.system() == "Linux":
+        result = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True)
+        return result.stdout.strip()
+
+def get_alternate_extension(ext):
+    """Return a different file extension to convert to."""
+    conversion_map = {
+        ".png": ".jpg", ".jpg": ".bmp", ".bmp": ".png",  # Images
+        ".mp4": ".avi", ".avi": ".mp4",  # Videos
+        ".mp3": ".wav", ".wav": ".mp3",  # Audio
+        ".docx": ".pdf", ".pdf": ".txt", ".txt": ".docx"  # Documents
+    }
+    return conversion_map.get(ext.lower(), None)
+
+def convert_file(file_path):
+    """Determine file type and convert accordingly."""
+    if not file_path or not os.path.exists(file_path):
+        print("No valid file detected. Copy a file and try again.")
+        return
+
+    mime_type, _ = mimetypes.guess_type(file_path)
+    filename, ext = os.path.splitext(file_path)
+    new_ext = get_alternate_extension(ext)
+
+    if not mime_type or not new_ext:
+        print(f"Unsupported file type: {file_path}")
+        return
+
+    new_file = filename + new_ext
+    print(f"Detected file: {file_path} ({mime_type}) -> Converting to {new_file}")
+    make_voice("Converting...", rate=1.0)
+
+    # Convert images
+    if mime_type.startswith("image/"):
+        with Image.open(file_path) as img:
+            img.save(new_file)
+        make_voice("Converted!", rate=1.0)
+        print(f"Converted image saved as: {new_file}")
+
+    # Convert videos/audio using FFmpeg
+    elif mime_type.startswith("video/") or mime_type.startswith("audio/"):
+        subprocess.run(["ffmpeg", "-i", file_path, new_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        make_voice("Converted!", rate=1.0)
+        print(f"Converted media saved as: {new_file}")
+
+    # Convert text-based documents using Pandoc
+    elif mime_type in ["application/pdf", "application/msword", "text/plain"]:
+        subprocess.run(["pandoc", file_path, "-o", new_file])
+        make_voice("Converted!", rate=1.0)
+        print(f"Converted document saved as: {new_file}")
+
+    else:
+        make_voice("I can't convert this type of file.", rate=1.0)
+        print(f"Unsupported file format: {mime_type}")
+
+def monitor_clipboard():
+    """Wait for the user to copy a file, then convert it."""
+    print("Copy a file to convert it. Press Ctrl+C to stop.")
+
+    last_clipboard = None
+
+    while True:
+        try:
+            copied_file = get_clipboard_file()
+
+            if copied_file and copied_file != last_clipboard:
+                last_clipboard = copied_file
+                convert_file(copied_file)
+
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nExiting.")
+            break
+
+def set_music(value):
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+        print("pygame.mixer initialized.")
+    global musicchannel, music
+    musicchannel.set_volume(value)
 # Main Execution
 if __name__ == "__main__":
     check_and_run('settings.py', 'config.py')  # Ensure settings.py exists
