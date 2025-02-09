@@ -47,15 +47,14 @@ def setup_repository():
 def main():
     print("Setting up Aurora AI...")
     
-    # Step 1: Clone Repository
-    setup_repository()
+    time.sleep(3)
     
     # Step 2: Install FFmpeg
     install_ffmpeg()
-    
+    time.sleep(3)
     # Step 3: Install Python Dependencies
     install_pip_packages()
-
+    time.sleep(1)
     print("\nInstallation complete! You may need to restart your terminal or system for changes to take effect.")
 
 if __name__ == "__main__":
