@@ -34,30 +34,12 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
    *FFmpeg: https://www.ffmpeg.org*
    
    
-3. **Clone the Repository**:  
+2. **Clone the Repository**:  
    ```bash
    git clone https://github.com/<yourusername>/aurora-ai.git
    cd aurora-ai
-4. **Install Requirements**:
-   ```bash
-   pip install -r requirements.txt
 
-
-5. **Version Specific Requirements**
-
-- Windows Requires Pywin32
-    ```bash
-    pip install psutil pywin32
-    
-- Linux Requires Xdotool
-    ```bash
-    Debain: sudo apt install xdotool
-    Arch: sudo pacman -S xdotool
-    Fedora: sudo dnf install xdotool
-    
-- MacOS Requires Pyobjc Framework
-    ```bash
-    pip install psutil pyobjc-framework-AppKit
+3. **Run It!**
 
 ---
    
