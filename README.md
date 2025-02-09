@@ -46,6 +46,15 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
   - This Project Uses FFMPEG, please download it!
   - This AI uses Google Gemini API, you'll need to get it from AI Studio
   - Website: https://aistudio.google.com
+  - Linux Requires Xdotool
+    ```bash
+    Debain: sudo apt install xdotool
+    Arch: sudo pacman -S xdotool
+    Fedora: sudo dnf install xdotool
+  - MacOS Requires Pyobjc Framework
+    ```bash
+    pip install psutil pyobjc-framework-AppKit
+
 
 ---
 
