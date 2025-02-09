@@ -55,7 +55,6 @@ def terminate_python_script(script_name):
     
     print(Fore.RED + f"{script_name} is not running." + Style.RESET_ALL)
 
-
 if __name__ == "__main__":
     try:
         # Start listener thread for Escape key
@@ -77,7 +76,6 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print(Fore.RED + "Interrupt received. Terminating Aurora..." + Style.RESET_ALL)
-        terminate_python_script("musicplayer.py")
         time.sleep(5)
         terminate_processes()  # Stop all subprocesses safely
         print(Fore.RED + "All subprocesses terminated. Exiting Aurora." + Style.RESET_ALL)
