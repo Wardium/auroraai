@@ -19,6 +19,9 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 - **Colorized CLI**: Enhances terminal output with `colorama` for better readability.
 - **Small GUI**: BETA, small UI that doesn't take up the screen!
 - **Hazi**: Custom Made Memory System, Good But Forgets Over Time
+- **Converts Files**: Want Your mp3 to be a wav? just ask her to do it!
+- **Sorts Files**: Ask her to sort your files with ease!
+- **Timer**: Need a timer? no worries! she'll make one!
 
 ---
 
