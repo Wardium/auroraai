@@ -10,6 +10,19 @@ import api
 import subprocess
 from datetime import datetime
 import colorama
+import sys
+
+def check_and_run(file_name, script_to_run):
+    # Check if the file exists in the current directory
+    if not os.path.exists(file_name):
+        
+        # Run the entire .py script in the same directory
+
+        # Exit the current script
+        sys.exit()
+check_and_run('settings.py', 'config.py')
+
+
 import settings
 
 image_size = (200, 200)
