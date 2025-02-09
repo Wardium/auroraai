@@ -22,6 +22,7 @@ Aurora AI is a multi-functional AI assistant built with Python. It leverages nat
 - **Converts Files**: Want Your mp3 to be a wav? just ask her to do it!
 - **Sorts Files**: Ask her to sort your files with ease!
 - **Timer**: Need a timer? no worries! she'll make one!
+- **Vision**: Aurora AI Can See Your Screen When Asked!
 
 ---
 
