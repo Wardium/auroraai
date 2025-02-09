@@ -214,7 +214,7 @@ class FloatingImageApp:
             self.canvas.itemconfig(self.image_id, image=self.photo)
             self.force_blink()
             image_x = 0  # Adjust X position
-            image_y = -40  # Adjust Y position
+            image_y = -17  # Adjust Y position
     
             self.image_id = self.canvas.create_image(image_x, image_y, anchor=tk.NW, image=self.photo)
                 
