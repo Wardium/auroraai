@@ -31,7 +31,7 @@ def terminate_processes():
 
 def esc_listener():
     # Listen for Escape key to terminate processes
-    keyboard.wait("esc")  # Block until 'esc' key is pressed
+    keyboard.wait("end")  # Block until 'esc' key is pressed
     print(Fore.RED + "Escape key pressed! Terminating Aurora..." + Style.RESET_ALL)
     terminate_python_script("musicplayer.py")
     terminate_processes()  # Stop all subprocesses safely
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         script1_thread.start()
         script2_thread.start()
 
-        print(Fore.GREEN + "Aurora is running. Press 'Escape' or 'Ctrl+C' to stop." + Style.RESET_ALL)
+        print(Fore.GREEN + "Aurora is running. Press 'End' or 'Ctrl+C' to stop." + Style.RESET_ALL)
         
         # Keep the main thread running (could replace this with UI or other logic)
         script1_thread.join()
