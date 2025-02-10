@@ -307,7 +307,7 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                         if current_app != get_focused_app():
                             print(Fore.LIGHTBLACK_EX + f"App: {get_focused_app()}" + Style.RESET_ALL)
                             current_app = get_focused_app()
-                            ai_prompt = f"Is this application currently focused considers important? (say if they were playing a game, or using not normal software used on a computer. not things like teminals or file viewers. (eg. explorer.exe)). only respond with 'yes' or 'no'. New Application Focused: {current_app} Old Application: {last_app}"
+                            ai_prompt = f"Is this application currently focused considers important? (say if they were playing a game, or using not normal software used on a computer. not things like teminals or file viewers or browsers. (eg. explorer.exe, opera.exe, googlechrome.exe, cmd.exe). only respond with 'yes' or 'no'. New Application Focused: {current_app} Old Application: {last_app}"
                             decision = custom_gem(ai_prompt, fast_configure_gemini())
                             last_app = current_app
                             if decision == "yes":
