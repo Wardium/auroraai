@@ -1114,7 +1114,6 @@ def convert_file(file_path):
 
     new_file = filename + new_ext
     print(f"Detected file: {file_path} ({mime_type}) -> Converting to {new_file}")
-    make_voice("Converting...", rate=1.0)
 
     # Convert images
     if mime_type.startswith("image/"):
@@ -1132,7 +1131,6 @@ def convert_file(file_path):
     # Convert text-based documents using Pandoc
     elif mime_type in ["application/pdf", "application/msword", "text/plain"]:
         subprocess.run(["pandoc", file_path, "-o", new_file])
-        make_voice("Converted!", rate=1.0)
         print(f"Converted document saved as: {new_file}")
 
     else:
