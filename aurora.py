@@ -90,6 +90,7 @@ app_call = False
 send_image = False
 image = ""
 Convert = False
+Continue = ""
 
 personality = settings.personality_text + (
         #Bot Configuration, PLEASE DO NOT CHANGE
