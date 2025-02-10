@@ -113,7 +113,7 @@ personality = settings.personality_text + (
         "\n"
         "9. if user prompt includes '@RANDOM': you started the conversation, the user has said nothing. the prompt may include the reason. respond with a conversation starter like: 'what are you doing?', 'what's that you're doing?', 'why are you doing that?','how are you doing?'"
         "\n"
-        "10. Never talk for the user"
+        "10. Never talk for the user. if you have to give time, always do in 12 hour format"
         "\n"
         "11. Use your history and take on the last emotion given, unless last emotion update is over 2 hours old"
         "\n"
