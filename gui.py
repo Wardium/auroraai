@@ -492,12 +492,17 @@ class FloatingImageApp:
         start_night = datetime.strptime("20:00", "%H:%M").time()  # 8:00 PM
         end_night = datetime.strptime("07:00", "%H:%M").time()    # 7:00 AM
 
+        self.load_api_variables()
+
         if (current_time >= start_night or current_time <= end_night):
-            sleep = True
-            new_image_path = f"src/eyes/sleep.png"
-            new_image = Image.open(new_image_path).resize(image_size, Image.Resampling.LANCZOS)
-            self.photo = ImageTk.PhotoImage(new_image)
-            self.canvas.itemconfig(self.image_id, image=self.photo)
+            if self.api.waiting == True:
+                sleep = True
+                new_image_path = f"src/eyes/sleep.png"
+                new_image = Image.open(new_image_path).resize(image_size, Image.Resampling.LANCZOS)
+                self.photo = ImageTk.PhotoImage(new_image)
+                self.canvas.itemconfig(self.image_id, image=self.photo)
+            else:
+                sleep = False
         else:
             sleep = False
     
