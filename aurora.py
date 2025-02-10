@@ -818,7 +818,7 @@ def add_message_to_history(history, speaker, message):
     """
     Adds a message with a timestamp to the conversation history.
     """
-    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    timestamp = datetime.now().strftime("[%Y-%m-%d %I:%M:%S %p]")
     formatted_message = f"{timestamp} {speaker}: {message}"
     if speaker == "AI":
         return history + formatted_message + "\n \n"
