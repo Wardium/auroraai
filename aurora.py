@@ -533,6 +533,9 @@ def get_voice_input():
             playsound("src/popoff.mp3")
             set_music(1.0)
 
+            if result_text == "huh":
+                return "no reply"
+
             if not result_text:
                 print(Fore.RED + "Sorry, I couldn't understand you." + Style.RESET_ALL)
                 write_to_api("response", "yes")
