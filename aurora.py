@@ -308,6 +308,8 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                             if decision == "yes":
                                 print(Fore.LIGHTBLACK_EX + f"App Call" + Style.RESET_ALL)
                                 app_call = True
+                                write_to_api("waiting", False)
+                                stop_timer()
                                 return f""
                 
                     importlib.reload(api)
