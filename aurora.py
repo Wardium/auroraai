@@ -9,6 +9,7 @@ import shutil
 import sys
 import pythoncom
 
+
 #Checking system platform and if the settings are set.
 if platform.system() == "Windows":
     import win32gui
@@ -60,6 +61,10 @@ from PIL import Image, ImageTk
 import mimetypes
 import pyperclip
 import PIL.ImageGrab
+import sounddevice as sd
+import queue
+import json
+from vosk import Model, KaldiRecognizer
 
 #All the global variables for the program!
 pygame.mixer.init()
@@ -302,7 +307,7 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                         if current_app != get_focused_app():
                             print(Fore.LIGHTBLACK_EX + f"App: {get_focused_app()}" + Style.RESET_ALL)
                             current_app = get_focused_app()
-                            ai_prompt = f"Is this application currently focused considers important? (say if they were playing a game, or browsing the web, or using not normal software used on a computer. not things like teminals or file viewers. (eg. explorer.exe)). only respond with 'yes' or 'no'. New Application Focused: {current_app} Old Application: {last_app}"
+                            ai_prompt = f"Is this application currently focused considers important? (say if they were playing a game, or using not normal software used on a computer. not things like teminals or file viewers. (eg. explorer.exe)). only respond with 'yes' or 'no'. New Application Focused: {current_app} Old Application: {last_app}"
                             decision = custom_gem(ai_prompt, fast_configure_gemini())
                             last_app = current_app
                             if decision == "yes":
@@ -311,7 +316,7 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                                 write_to_api("waiting", False)
                                 stop_timer()
                                 return f""
-                
+
                     importlib.reload(api)
                     
                     print(Fore.LIGHTBLACK_EX + f"Random: {api.random_talk}" + Style.RESET_ALL)
@@ -493,46 +498,47 @@ def check_send_image(input):
 def get_voice_input():
     global startedmusic, app_call
 
-    if startedmusic == True:
+
+    if startedmusic:
         startedmusic = False
         return "@skip"
+
     write_to_api("response", "yes")
     write_to_api("finished", False)
     playsound("src/popon.mp3")
-    """Captures voice input using the SpeechRecognition library."""
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        set_music(0.3)
-        print(Fore.YELLOW + "Listening..." + Style.RESET_ALL)
-        
-        if app_call == True:
-            app_call = False
-            return f"@RANDOM (User is now using {current_app})"
-        
+
+    print(Fore.YELLOW + "Listening..." + Style.RESET_ALL)
+    set_music(0.3)
+
+    if app_call:
+        app_call = False
+        return f"@RANDOM (User is now using {current_app})"
+
+    # Start capturing audio
+    with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype="int16",
+                           channels=1, callback=audio_callback):
         try:
-            if startedmusic == True:
-                startedmusic = False
-                return "@skip"
-                
-            if api.random_talk == True:
-                return "@RANDOM"
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=150)
+            result_text = ""
+
+            # Process audio in real-time
+            while True:
+                data = audio_queue.get()
+                if recognizer.AcceptWaveform(data):
+                    result = json.loads(recognizer.Result())
+                    result_text = result["text"]
+                    break  # Stop listening after receiving a result
+
             print(Fore.CYAN + "Processing your input..." + Style.RESET_ALL)
-            write_to_api("response", "yes")
             playsound("src/popoff.mp3")
             set_music(1.0)
-            return recognizer.recognize_google(audio)
-        except sr.WaitTimeoutError:
-            print(Fore.RED + "No input detected. Switching to wake word detection..." + Style.RESET_ALL)
-            playsound("src/wait.mp3")
-            write_to_api("response", "no")
-            set_music(1.0)
-            return "no reply"
-        except sr.UnknownValueError:
-            print(Fore.RED + "Sorry, I couldn't understand you." + Style.RESET_ALL)
-            write_to_api("response", "yes")
-            set_music(1.0)
-            return ""
+
+            if not result_text:
+                print(Fore.RED + "Sorry, I couldn't understand you." + Style.RESET_ALL)
+                write_to_api("response", "yes")
+                return ""
+
+            return result_text
+
         except Exception as e:
             print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
             write_to_api("response", "yes")
@@ -778,6 +784,12 @@ def conversation_loop():
                 make_voice(voice_text=output, rate=1.0)
             else:
                 print(Fore.LIGHTBLACK_EX + "Output is empty; skipping TTS generation." + Style.RESET_ALL)
+
+def audio_callback(indata, frames, time, status):
+    """Callback function to capture live audio."""
+    if status:
+        print(status)
+    audio_queue.put(bytes(indata))
 
 def save_conversation_to_file(conversation_history):
     """
@@ -1168,6 +1180,11 @@ def set_music(value):
 if __name__ == "__main__":
     check_and_run('settings.py', 'config.py')  # Ensure settings.py exists
     write_to_api("finished", False)
+    
+    stt_model_path = "stt/model-small"
+    stt_model = Model(stt_model_path)
+    recognizer = KaldiRecognizer(stt_model, 16000)
+    audio_queue = queue.Queue()
 
     # Assuming 'settings' is a module that contains a 'voice' variable
     import settings
