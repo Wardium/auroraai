@@ -279,6 +279,18 @@ def check_end_of_conversation(user_input, end_detection_model):
         print(Fore.LIGHTBLACK_EX + f"An error occurred during end detection: {e}" + Style.RESET_ALL)
         return False
 
+def get_random_greet():
+    text_options = [
+        "Yeah?",
+        "What?",
+        "Yes?",
+        "Hm?",
+        "What is it?",
+        "",
+    ]
+    return random.choice(text_options)
+
+
 # Wake Word Listening and Input Handling
 def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
     """Listens for a specific wake word or allows user to type input depending on the interaction mode."""
@@ -341,6 +353,7 @@ def wait_for_wake_word_or_input(interaction_mode, wake_word="aurora"):
                         print(Fore.CYAN + "Wake word detected. Starting conversation..." + Style.RESET_ALL)
                         write_to_api("waiting", False)
                         stop_timer()
+                        make_voice(get_random_greet(), rate=1.0)
                         return ""  # Exit the loop once the wake word is detected
                 except sr.UnknownValueError:
                     continue  # Ignore unrecognized input
